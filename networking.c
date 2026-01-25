@@ -45,7 +45,15 @@ static void on_dc_open(int dc, void *ptr) {
         printf("Failed to spawn player: server full\n");
     }
 }
+static void on_dc_message(int ws, const char *message, int size, void *ptr) {
+    ClientContext *ctx = (ClientContext *)ptr;
+    if (!ctx || ctx->pc == 0) return;
+    g_server_ctx->clients[idx]
 
+    if (ctx->player_idx > 0 ) {
+        input_buffer_player(ctx->player_idx);
+    }
+}
 static void on_ws_open(int ws, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     printf("WebSocket open. Initializing PeerConnection.\n");
@@ -65,6 +73,7 @@ static void on_ws_open(int ws, void *ptr) {
     ctx->dc = rtcCreateDataChannel(ctx->pc, "game-data");
     rtcSetUserPointer(ctx->dc, ctx);
     rtcSetOpenCallback(ctx->dc, on_dc_open);
+    rtcSetMessageCallback(ctx->dc, on_dc_message);
 }
 
 static void on_ws_closed(int ws, void *ptr) {

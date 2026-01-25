@@ -26,6 +26,11 @@ void close_player(struct Player *players, const int i) {
     printf("Player %d closed\n", i);
     players[i].flags &= ~PLAYER_ACTIVE;
 }
+void input_buffer_player(struct PlayerInput *player_inputs, struct PlayerInput playerinput, int idx) {
+    player_inputs[idx].dir_x = playerinput.dir_x;
+    player_inputs[idx].dir_y = playerinput.dir_y;
+    player_inputs[idx].angle = playerinput.angle;
+}
 void move_players(struct Player *players, struct PlayerInput *player_inputs) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (players[i].flags & PLAYER_ACTIVE) {
