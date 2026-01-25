@@ -11,16 +11,18 @@ const float SPEED = 0.001f;
 int spawn_player(struct Player *players) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (!(players[i].flags & PLAYER_ACTIVE)) {
-            players[i].flags |= PLAYER_ACTIVE;
             players[i].x = 0.0f;
             players[i].y = 0.0f;
             players[i].angle = 0.0f;
+            players[i].flags |= PLAYER_ACTIVE;
+            players[i].id = i;
             return i;
         }
     }
     return -1;
 }
 void close_player(struct Player *players, const int i) {
+    printf("Player %d closed\n", i);
     players[i].flags &= ~PLAYER_ACTIVE;
 }
 void move_players(struct Player *players, struct PlayerInput *player_inputs) {
@@ -35,10 +37,17 @@ void move_players(struct Player *players, struct PlayerInput *player_inputs) {
     }
 }
 void update_player_clients(struct Player *players, ClientContext *clients) {
+    struct Player active_players[MAX_PLAYERS];
+    int count = 0;
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (players[i].flags & PLAYER_ACTIVE) {
-            //rtcSendMessage(--------------, (char*)&players[i], sizeof(struct Player));
+            active_players[count] = players[i];
+            count++;
         }
+    }
+    for (int i = 0; i <= count ; i++) {
+        rtcSendMessage(clients[i].dc, (char*)active_players, sizeof(struct Player) * count);
+        printf("Player %d updated. sent %d players \n", i ,count);
     }
 }
 void game_loop(struct Player *players, struct PlayerInput *player_inputs, ClientContext *clients) {

@@ -16,6 +16,7 @@ struct Player {
     float y;
     float angle;
     uint16_t flags;
+    uint16_t id;
 };
 struct PlayerInput {
     float dir_x;
