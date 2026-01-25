@@ -6,12 +6,23 @@
 #include "networking.h"
 #include "game.h"
 
-#define TICK_RATE_MS 66
-#define NS_PER_MS 1000000
-#define NS_PER_SEC 1000000000
-#define MAX_PLAYERS 1000
 const float SPEED = 0.001f;
 
+int spawn_player(struct Player *players) {
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (!(players[i].flags & PLAYER_ACTIVE)) {
+            players[i].flags |= PLAYER_ACTIVE;
+            players[i].x = 0.0f;
+            players[i].y = 0.0f;
+            players[i].angle = 0.0f;
+            return i;
+        }
+    }
+    return -1;
+}
+void close_player(struct Player *players, const int i) {
+    players[i].flags &= ~PLAYER_ACTIVE;
+}
 void move_players(struct Player *players, struct PlayerInput *player_inputs) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (players[i].flags & PLAYER_ACTIVE) {
@@ -62,7 +73,12 @@ int main() {
     struct PlayerInput player_inputs[MAX_PLAYERS] = {0};
     ClientContext clients[MAX_PLAYERS] = {0};
 
-    int server = start_networking_server(8080);
+    ServerContext server_ctx = {
+        .players = players,
+        .clients = clients
+    };
+
+    int server = start_networking_server(8080, &server_ctx);
     if (server < 0) {
         return EXIT_FAILURE;
     }

@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+static ServerContext *g_server_ctx = NULL;
+
 static void on_local_description(int pc, const char *sdp, const char *type, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     if (rtcIsOpen(ctx->ws)) {
@@ -29,6 +31,20 @@ static void on_ws_message(int ws, const char *message, int size, void *ptr) {
     }
 }
 
+static void on_dc_open(int dc, void *ptr) {
+    ClientContext *ctx = (ClientContext *)ptr;
+    printf("DataChannel open.\n");
+    if (!g_server_ctx) return;
+
+    int idx = spawn_player(g_server_ctx->players);
+    if (idx >= 0) {
+        ctx->player_idx = idx;
+        g_server_ctx->clients[idx] = *ctx;
+        printf("Player spawned at index %d\n", idx);
+    } else {
+        printf("Failed to spawn player: server full\n");
+    }
+}
 
 static void on_ws_open(int ws, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
@@ -46,13 +62,19 @@ static void on_ws_open(int ws, void *ptr) {
     rtcSetLocalDescriptionCallback(ctx->pc, on_local_description);
     rtcSetLocalCandidateCallback(ctx->pc, on_local_candidate);
 
-    rtcCreateDataChannel(ctx->pc, "game-data");
+    ctx->dc = rtcCreateDataChannel(ctx->pc, "game-data");
+    rtcSetUserPointer(ctx->dc, ctx);
+    rtcSetOpenCallback(ctx->dc, on_dc_open);
 }
 
 static void on_ws_closed(int ws, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     printf("Client disconnected.\n");
     if (ctx) {
+        if (ctx->player_idx >= 0 && g_server_ctx) {
+            close_player(g_server_ctx->players, ctx->player_idx);
+            memset(&g_server_ctx->clients[ctx->player_idx], 0, sizeof(ClientContext));
+        }
         if (ctx->pc) rtcDeletePeerConnection(ctx->pc);
         free(ctx);
     }
@@ -63,6 +85,7 @@ static void on_ws_client(int server, int ws, void *ptr) {
 
     ClientContext *ctx = calloc(1, sizeof(ClientContext));
     ctx->ws = ws;
+    ctx->player_idx = -1;
 
     rtcSetUserPointer(ws, ctx);
     rtcSetOpenCallback(ws, on_ws_open);
@@ -70,7 +93,8 @@ static void on_ws_client(int server, int ws, void *ptr) {
     rtcSetClosedCallback(ws, on_ws_closed);
 }
 
-int start_networking_server(int port) {
+int start_networking_server(int port, ServerContext *ctx) {
+    g_server_ctx = ctx;
     rtcInitLogger(RTC_LOG_INFO, NULL);
 
     rtcWsServerConfiguration ws_config = {
@@ -84,6 +108,7 @@ int start_networking_server(int port) {
     }
     return server;
 }
+
 
 void stop_networking_server(int server) {
     rtcDeleteWebSocketServer(server);
