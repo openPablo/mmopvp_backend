@@ -6,6 +6,7 @@
 #include "networking.h"
 #include "game.h"
 
+#define PORT 8080
 const float SPEED = 0.001f;
 
 int spawn_player(struct Player *players) {
@@ -45,9 +46,11 @@ void update_player_clients(struct Player *players, ClientContext *clients) {
             count++;
         }
     }
-    for (int i = 0; i <= count ; i++) {
-        rtcSendMessage(clients[i].dc, (char*)active_players, sizeof(struct Player) * count);
-        printf("Player %d updated. sent %d players \n", i ,count);
+    for (int i = 0; i <= MAX_PLAYERS ; i++) {
+        if (players[i].flags & PLAYER_ACTIVE) {
+            rtcSendMessage(clients[i].dc, (char*)active_players, sizeof(struct Player) * count);
+            printf("Player %d updated. sent %d players \n", i ,count);
+        }
     }
 }
 void game_loop(struct Player *players, struct PlayerInput *player_inputs, ClientContext *clients) {
@@ -93,7 +96,6 @@ int main() {
     }
 
     printf("Signaling server listening on port 8080...\n");
-
     game_loop(players, player_inputs, clients);
 
     stop_networking_server(server);

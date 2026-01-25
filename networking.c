@@ -75,10 +75,13 @@ static void on_ws_closed(int ws, void *ptr) {
             close_player(g_server_ctx->players, ctx->player_idx);
             memset(&g_server_ctx->clients[ctx->player_idx], 0, sizeof(ClientContext));
         }
+        if (ctx->dc) rtcDeletePeerConnection(ctx->dc);
         if (ctx->pc) rtcDeletePeerConnection(ctx->pc);
         free(ctx);
     }
 }
+
+
 
 static void on_ws_client(int server, int ws, void *ptr) {
     printf("New client connection request...\n");
