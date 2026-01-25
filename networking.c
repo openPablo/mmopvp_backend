@@ -29,7 +29,6 @@ static void on_ws_message(int ws, const char *message, int size, void *ptr) {
     }
 }
 
-// --- WebSocket Callbacks ---
 
 static void on_ws_open(int ws, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
@@ -47,7 +46,6 @@ static void on_ws_open(int ws, void *ptr) {
     rtcSetLocalDescriptionCallback(ctx->pc, on_local_description);
     rtcSetLocalCandidateCallback(ctx->pc, on_local_candidate);
 
-    // Creating DataChannel triggers the initial Offer
     rtcCreateDataChannel(ctx->pc, "game-data");
 }
 
