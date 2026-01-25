@@ -1,85 +1,12 @@
-#include <rtc/rtc.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include "networking.h"
 
 #define TICK_RATE_MS 33
 #define NS_PER_MS 1000000
 #define NS_PER_SEC 1000000000
-
-typedef struct {
-    int ws;
-    int pc;
-} ClientContext;
-
-void on_local_description(int pc, const char *sdp, const char *type, void *ptr) {
-    ClientContext *ctx = (ClientContext *)ptr;
-    if (rtcIsOpen(ctx->ws)) {
-        printf("Sending SDP %s via WS\n", type);
-        rtcSendMessage(ctx->ws, sdp, -1);
-    }
-}
-
-void on_local_candidate(int pc, const char *cand, const char *mid, void *ptr) {
-    ClientContext *ctx = (ClientContext *)ptr;
-    if (rtcIsOpen(ctx->ws)) {
-        rtcSendMessage(ctx->ws, cand, -1);
-    }
-}
-
-void on_ws_message(int ws, const char *message, int size, void *ptr) {
-    ClientContext *ctx = (ClientContext *)ptr;
-    if (!ctx || ctx->pc == 0) return;
-
-    if (strstr(message, "v=0") != NULL) {
-        rtcSetRemoteDescription(ctx->pc, message, NULL);
-    } else {
-        rtcAddRemoteCandidate(ctx->pc, message, NULL);
-    }
-}
-
-void on_ws_open(int ws, void *ptr) {
-    ClientContext *ctx = (ClientContext *)ptr;
-    printf("WebSocket open. Initializing PeerConnection.\n");
-
-    rtcConfiguration config = {
-        .iceServers = NULL,
-        .iceServersCount = 0,
-        .disableAutoNegotiation = false
-    };
-
-    ctx->pc = rtcCreatePeerConnection(&config);
-    rtcSetUserPointer(ctx->pc, ctx);
-
-    rtcSetLocalDescriptionCallback(ctx->pc, on_local_description);
-    rtcSetLocalCandidateCallback(ctx->pc, on_local_candidate);
-
-    rtcCreateDataChannel(ctx->pc, "game-data");
-}
-
-void on_ws_closed(int ws, void *ptr) {
-    ClientContext *ctx = (ClientContext *)ptr;
-    printf("Client disconnected.\n");
-    if (ctx) {
-        if (ctx->pc) rtcDeletePeerConnection(ctx->pc);
-        free(ctx);
-    }
-}
-
-void on_ws_client(int server, int ws, void *ptr) {
-    printf("New client connection request...\n");
-
-    ClientContext *ctx = calloc(1, sizeof(ClientContext));
-    ctx->ws = ws;
-
-    rtcSetUserPointer(ws, ctx);
-    rtcSetOpenCallback(ws, on_ws_open);
-    rtcSetMessageCallback(ws, on_ws_message);
-    rtcSetClosedCallback(ws, on_ws_closed);
-}
-
 
 void game_loop() {
     struct timespec ts;
@@ -88,7 +15,7 @@ void game_loop() {
     clock_gettime(CLOCK_MONOTONIC, &ts);
     next_tick = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
 
-    printf("Game loop started at 33ms tickrate.\n");
+    printf("Game loop started at %dms tickrate.\n", TICK_RATE_MS);
 
     while (1) {
         // update_game_world();
@@ -109,16 +36,8 @@ void game_loop() {
 }
 
 int main() {
-    rtcInitLogger(RTC_LOG_INFO, NULL);
-
-    rtcWsServerConfiguration ws_config = {
-        .port = 8080,
-        .enableTls = false
-    };
-
-    int server = rtcCreateWebSocketServer(&ws_config, on_ws_client);
+    int server = start_networking_server(8080);
     if (server < 0) {
-        fprintf(stderr, "Failed to start server on port 8080\n");
         return EXIT_FAILURE;
     }
 
@@ -126,7 +45,7 @@ int main() {
 
     game_loop();
 
-    rtcDeleteWebSocketServer(server);
-    rtcCleanup();
+    stop_networking_server(server);
+    cleanup_networking();
     return EXIT_SUCCESS;
 }

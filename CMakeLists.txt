@@ -3,7 +3,7 @@ project(pvpmmo_backend C)
 
 set(CMAKE_C_STANDARD 11)
 find_package(LibDataChannel REQUIRED)
-add_executable(pvpmmo_backend main.c)
+add_executable(pvpmmo_backend main.c networking.c)
 set(CMAKE_INSTALL_RPATH "/usr/local/lib")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath,/usr/local/lib")
