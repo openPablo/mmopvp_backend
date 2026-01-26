@@ -7,7 +7,7 @@
 #include "game.h"
 
 #define PORT 8080
-const float SPEED = 0.001f;
+const float SPEED = 0.05f;
 
 int spawn_player(struct Player *players) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -24,21 +24,19 @@ int spawn_player(struct Player *players) {
 }
 void close_player(struct Player *players, const int i) {
     printf("Player %d closed\n", i);
-    players[i].flags &= ~PLAYER_ACTIVE;
+    players[i].flags = ~PLAYER_ACTIVE;
 }
-void input_buffer_player(struct PlayerInput *player_inputs, struct PlayerInput playerinput, int idx) {
-    player_inputs[idx].dir_x = playerinput.dir_x;
-    player_inputs[idx].dir_y = playerinput.dir_y;
-    player_inputs[idx].angle = playerinput.angle;
+void input_buffer_player(struct inputBuffer *buffers, struct inputBuffer *buf, int idx) {
+    buffers[idx] = *buf;
 }
-void move_players(struct Player *players, struct PlayerInput *player_inputs) {
+void move_players(struct Player *players, struct inputBuffer *buffers) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (players[i].flags & PLAYER_ACTIVE) {
-            players[i].x += player_inputs[i].dir_x * SPEED;
-            players[i].y += player_inputs[i].dir_y * SPEED;
-
-            player_inputs[i].dir_x  = 0.0f;
-            player_inputs[i].dir_y  = 0.0f;
+            players[i].x += buffers[i].dir_x * SPEED;
+            players[i].y += buffers[i].dir_y * SPEED;
+            players[i].angle = buffers[i].angle;
+            buffers[i].dir_x  = 0.0f;
+            buffers[i].dir_y  = 0.0f;
         }
     }
 }
@@ -51,14 +49,13 @@ void update_player_clients(struct Player *players, ClientContext *clients) {
             count++;
         }
     }
-    for (int i = 0; i <= MAX_PLAYERS ; i++) {
+    for (int i = 0; i < MAX_PLAYERS ; i++) {
         if (players[i].flags & PLAYER_ACTIVE) {
             rtcSendMessage(clients[i].dc, (char*)active_players, sizeof(struct Player) * count);
-            printf("Player %d updated. sent %d players \n", i ,count);
         }
     }
 }
-void game_loop(struct Player *players, struct PlayerInput *player_inputs, ClientContext *clients) {
+void game_loop(struct Player *players, struct inputBuffer *buffers, ClientContext *clients) {
     struct timespec ts;
     uint64_t next_tick;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -66,7 +63,7 @@ void game_loop(struct Player *players, struct PlayerInput *player_inputs, Client
     printf("Game loop started at %dms tickrate.\n", TICK_RATE_MS);
 
     while (1) {
-        move_players(players, player_inputs);
+        move_players(players, buffers);
         update_player_clients(players, clients);
 
 
@@ -87,11 +84,12 @@ void game_loop(struct Player *players, struct PlayerInput *player_inputs, Client
 
 int main() {
     struct Player players[MAX_PLAYERS] = {0};
-    struct PlayerInput player_inputs[MAX_PLAYERS] = {0};
+    struct inputBuffer buffers[MAX_PLAYERS] = {0};
     ClientContext clients[MAX_PLAYERS] = {0};
 
     ServerContext server_ctx = {
         .players = players,
+        .inputBuffers = buffers,
         .clients = clients
     };
 
@@ -100,8 +98,8 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    printf("Signaling server listening on port 8080...\n");
-    game_loop(players, player_inputs, clients);
+    printf("Signaling server listening on port %d...\n", PORT);
+    game_loop(players, buffers, clients);
 
     stop_networking_server(server);
     cleanup_networking();

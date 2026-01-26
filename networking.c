@@ -2,8 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "game.h"
 
-static ServerContext *g_server_ctx = NULL;
+static ServerContext *server_ctx = NULL;
 
 static void on_local_description(int pc, const char *sdp, const char *type, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
@@ -34,12 +35,12 @@ static void on_ws_message(int ws, const char *message, int size, void *ptr) {
 static void on_dc_open(int dc, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     printf("DataChannel open.\n");
-    if (!g_server_ctx) return;
+    if (!server_ctx) return;
 
-    int idx = spawn_player(g_server_ctx->players);
+    int idx = spawn_player(server_ctx->players);
     if (idx >= 0) {
         ctx->player_idx = idx;
-        g_server_ctx->clients[idx] = *ctx;
+        server_ctx->clients[idx] = *ctx;
         printf("Player spawned at index %d\n", idx);
     } else {
         printf("Failed to spawn player: server full\n");
@@ -47,11 +48,13 @@ static void on_dc_open(int dc, void *ptr) {
 }
 static void on_dc_message(int ws, const char *message, int size, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
-    if (!ctx || ctx->pc == 0) return;
-    g_server_ctx->clients[idx]
-
-    if (ctx->player_idx > 0 ) {
-        input_buffer_player(ctx->player_idx);
+    if (!ctx) return;
+    if (size != sizeof(struct inputBuffer)) {
+        printf("Player buffer size mismatch in received webrtc.\n");
+    }
+    struct inputBuffer *buf = (struct inputBuffer*)message;
+    if (ctx->player_idx >= 0 ) {
+        input_buffer_player(server_ctx->inputBuffers, buf, ctx->player_idx);
     }
 }
 static void on_ws_open(int ws, void *ptr) {
@@ -80,9 +83,9 @@ static void on_ws_closed(int ws, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     printf("Client disconnected.\n");
     if (ctx) {
-        if (ctx->player_idx >= 0 && g_server_ctx) {
-            close_player(g_server_ctx->players, ctx->player_idx);
-            memset(&g_server_ctx->clients[ctx->player_idx], 0, sizeof(ClientContext));
+        if (ctx->player_idx >= 0 && server_ctx) {
+            close_player(server_ctx->players, ctx->player_idx);
+            memset(&server_ctx->clients[ctx->player_idx], 0, sizeof(ClientContext));
         }
         if (ctx->dc) rtcDeletePeerConnection(ctx->dc);
         if (ctx->pc) rtcDeletePeerConnection(ctx->pc);
@@ -106,7 +109,7 @@ static void on_ws_client(int server, int ws, void *ptr) {
 }
 
 int start_networking_server(int port, ServerContext *ctx) {
-    g_server_ctx = ctx;
+    server_ctx = ctx;
     rtcInitLogger(RTC_LOG_INFO, NULL);
 
     rtcWsServerConfiguration ws_config = {

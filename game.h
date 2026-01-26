@@ -18,7 +18,7 @@ struct Player {
     uint16_t flags;
     uint16_t id;
 };
-struct PlayerInput {
+struct inputBuffer {
     float dir_x;
     float dir_y;
     float angle;
@@ -26,5 +26,6 @@ struct PlayerInput {
 
 int spawn_player(struct Player *players);
 void close_player(struct Player *players, int i);
+void input_buffer_player(struct inputBuffer *buffers, struct inputBuffer *buf, int idx);
 
 #endif

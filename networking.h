@@ -6,6 +6,7 @@
 
 typedef struct {
     struct Player *players;
+    struct inputBuffer *inputBuffers;
     struct ClientContext *clients;
 } ServerContext;
 
