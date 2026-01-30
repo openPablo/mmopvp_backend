@@ -7,13 +7,13 @@
 #include "game.h"
 
 #define PORT 8080
-const float SPEED = 0.05f;
+const float SPEED = 0.2f;
 
 int spawn_player(struct Player *players) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (!(players[i].flags & PLAYER_ACTIVE)) {
-            players[i].x = 0.0f;
-            players[i].y = 0.0f;
+            players[i].x = 100.0f;
+            players[i].y = 100.0f;
             players[i].angle = 0.0f;
             players[i].flags |= PLAYER_ACTIVE;
             players[i].id = i;
