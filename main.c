@@ -16,6 +16,8 @@ int spawn_player(struct Player *players) {
             players[i].y = 100.0f;
             players[i].angle = 0.0f;
             players[i].flags |= PLAYER_ACTIVE;
+            players[i].id = i;
+            players[i].hero |= WINDYBETTY;
             return i;
         }
     }

@@ -52,7 +52,11 @@ static void on_ws_message(int ws, const char *message, int size, void *ptr) {
         rtcAddRemoteCandidate(ctx->pc, message, NULL);
     }
 }
-
+static void sendIdConfirmationMessage(ClientContext *ctx) {
+    char confirmIdMessage[10];
+    snprintf(confirmIdMessage,10, "id=%d",ctx->player_idx);
+    rtcSendMessage(ctx->ws, confirmIdMessage, 10);
+}
 static void on_dc_open(int dc, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     printf("DataChannel open.\n");
@@ -65,15 +69,18 @@ static void on_dc_open(int dc, void *ptr) {
             server_ctx->clients[idx] = *ctx;
             add_player(ctx->player_idx,ctx->bearer_token, &server_ctx->authenticatedPlayers);
             printf("Player spawned at index %d\n", idx);
+            sendIdConfirmationMessage(ctx);
         } else {
             printf("Failed to spawn player: server full\n");
         }
     } else {
         ctx->player_idx = player->idx;
         server_ctx->clients[player->idx] = *ctx;
+        sendIdConfirmationMessage(ctx);
         printf("Player found at index %d\n", player->idx);
     }
 }
+
 static void on_dc_message(int ws, const char *message, int size, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     if (!ctx) return;
