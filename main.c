@@ -12,11 +12,10 @@ const float SPEED = 0.2f;
 int spawn_player(struct Player *players) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (!(players[i].flags & PLAYER_ACTIVE)) {
-            players[i].x = 100.0f;
+            players[i].x = 500.0f;
             players[i].y = 100.0f;
             players[i].angle = 0.0f;
             players[i].flags |= PLAYER_ACTIVE;
-            players[i].id = i;
             return i;
         }
     }
@@ -51,7 +50,9 @@ void update_player_clients(struct Player *players, ClientContext *clients) {
     }
     for (int i = 0; i < MAX_PLAYERS ; i++) {
         if (players[i].flags & PLAYER_ACTIVE) {
-            rtcSendMessage(clients[i].dc, (char*)active_players, sizeof(struct Player) * count);
+            if (clients[i].dc) {
+                rtcSendMessage(clients[i].dc, (char*)active_players, sizeof(struct Player) * count);
+            }
         }
     }
 }
@@ -86,11 +87,13 @@ int main() {
     struct Player players[MAX_PLAYERS] = {0};
     struct inputBuffer buffers[MAX_PLAYERS] = {0};
     ClientContext clients[MAX_PLAYERS] = {0};
+    struct authenticatedPlayer *authenticatedPlayers = NULL;
 
     ServerContext server_ctx = {
         .players = players,
         .inputBuffers = buffers,
-        .clients = clients
+        .clients = clients,
+        .authenticatedPlayers = authenticatedPlayers
     };
 
     int server = start_networking_server(8080, &server_ctx);

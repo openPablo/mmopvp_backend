@@ -6,6 +6,22 @@
 
 static ServerContext *server_ctx = NULL;
 
+void add_player(int id, char token[30], struct authenticatedPlayer **authenticatedPlayers) {
+    struct authenticatedPlayer *s;
+    s = malloc(sizeof *s);
+    s->idx = id;
+    strcpy(s->bearer_token, token);
+    HASH_ADD_STR(*authenticatedPlayers, bearer_token, s);
+}
+struct authenticatedPlayer *find_player(char bearer_token[30], struct authenticatedPlayer **authenticatedPlayers) {
+    struct authenticatedPlayer *s;
+    HASH_FIND_STR(*authenticatedPlayers, bearer_token, s);
+    return s;
+}
+void delete_player(struct authenticatedPlayer *authenticatedPlayer, struct authenticatedPlayer **authenticatedPlayers) {
+    HASH_DEL(*authenticatedPlayers, authenticatedPlayer);
+    free(authenticatedPlayer);
+}
 static void on_local_description(int pc, const char *sdp, const char *type, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     if (rtcIsOpen(ctx->ws)) {
@@ -24,7 +40,12 @@ static void on_local_candidate(int pc, const char *cand, const char *mid, void *
 static void on_ws_message(int ws, const char *message, int size, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     if (!ctx || ctx->pc == 0) return;
-
+    char *pos;
+    if ((pos = strstr(message, "bearer_token="))) {
+        strncpy(ctx->bearer_token, pos + 13, 30);
+        printf("bearer_token=%s\n",ctx->bearer_token);
+        return;
+    }
     if (strstr(message, "v=0") != NULL) {
         rtcSetRemoteDescription(ctx->pc, message, NULL);
     } else {
@@ -36,14 +57,21 @@ static void on_dc_open(int dc, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     printf("DataChannel open.\n");
     if (!server_ctx) return;
-
-    int idx = spawn_player(server_ctx->players);
-    if (idx >= 0) {
-        ctx->player_idx = idx;
-        server_ctx->clients[idx] = *ctx;
-        printf("Player spawned at index %d\n", idx);
+    struct authenticatedPlayer *player = find_player(ctx->bearer_token,&server_ctx->authenticatedPlayers);
+    if (!player) {
+        int idx = spawn_player(server_ctx->players);
+        if (idx >= 0) {
+            ctx->player_idx = idx;
+            server_ctx->clients[idx] = *ctx;
+            add_player(ctx->player_idx,ctx->bearer_token, &server_ctx->authenticatedPlayers);
+            printf("Player spawned at index %d\n", idx);
+        } else {
+            printf("Failed to spawn player: server full\n");
+        }
     } else {
-        printf("Failed to spawn player: server full\n");
+        ctx->player_idx = player->idx;
+        server_ctx->clients[player->idx] = *ctx;
+        printf("Player found at index %d\n", player->idx);
     }
 }
 static void on_dc_message(int ws, const char *message, int size, void *ptr) {
@@ -84,7 +112,7 @@ static void on_ws_closed(int ws, void *ptr) {
     printf("Client disconnected.\n");
     if (ctx) {
         if (ctx->player_idx >= 0 && server_ctx) {
-            close_player(server_ctx->players, ctx->player_idx);
+            //close_player(server_ctx->players, ctx->player_idx);
             memset(&server_ctx->clients[ctx->player_idx], 0, sizeof(ClientContext));
         }
         if (ctx->dc) rtcDeletePeerConnection(ctx->dc);
@@ -110,6 +138,7 @@ static void on_ws_client(int server, int ws, void *ptr) {
 
 int start_networking_server(int port, ServerContext *ctx) {
     server_ctx = ctx;
+    rtcPreload();
     rtcInitLogger(RTC_LOG_INFO, NULL);
 
     rtcWsServerConfiguration ws_config = {

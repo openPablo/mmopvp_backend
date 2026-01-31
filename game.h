@@ -11,12 +11,16 @@ typedef enum {
     PLAYER_ACTIVE   = 1 << 0,
     PLAYER_DEAD     = 1 << 1,
 } PlayerFlags;
+typedef enum {
+    WINDYBETTY  = 1 << 0,
+} PlayerHero;
+
 struct Player {
     float x;
     float y;
     float angle;
     uint16_t flags;
-    uint16_t id;
+    uint16_t hero;
 };
 struct inputBuffer {
     float dir_x;
