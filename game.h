@@ -8,27 +8,52 @@
 #define NS_PER_SEC 1000000000
 
 typedef enum {
-    PLAYER_ACTIVE   = 1 << 0,
-    PLAYER_DEAD     = 1 << 1,
-} PlayerFlags;
+    ACTIVE   = 1 << 0,
+    DEAD     = 1 << 1,
+    INVULNERABLE  = 1 << 2,
+    CASTING_1    = 1 << 3,
+    CASTING_2    = 1 << 5,
+    CASTING_3    = 1 << 6,
+    CASTING_ULTI    = 1 << 7
+} PlayerFlag;
+#define IS_CASTING (CASTING_1 | CASTING_2 | CASTING_3 | CASTING_ULTI)
 typedef enum {
-    WINDYBETTY  = 1 << 0,
+    AIRMAGE = 1 << 0,
+    PRIEST  = 1 << 1,
+    ROGUE   = 1 <<2
 } PlayerHero;
 
+struct HeroStats {
+    int cast_time_ms;
+    int base_health;
+};
+
+static const struct HeroStats HERO_DATA[] = {
+    [AIRMAGE]   = { .cast_time_ms = 400, .base_health = 100 },
+    [PRIEST] = { .cast_time_ms = 400, .base_health = 100 },
+    [ROGUE] = { .cast_time_ms = 400, .base_health = 100 }
+};
+#pragma pack(push, 1)
 struct Player {
     float x;
     float y;
     float angle;
+    int animating_ms;
     uint16_t id;
     uint16_t flags;
     uint16_t hero;
+    uint16_t health;
 };
+#pragma pack(pop)
+
+#pragma pack(push, 1)
 struct inputBuffer {
     float dir_x;
     float dir_y;
     float angle;
+    uint8_t castSpell;
 };
-
+#pragma pack(pop)
 int spawn_player(struct Player *players);
 void close_player(struct Player *players, int i);
 void input_buffer_player(struct inputBuffer *buffers, struct inputBuffer *buf, int idx);
