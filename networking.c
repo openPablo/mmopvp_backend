@@ -84,13 +84,19 @@ static void on_dc_open(int dc, void *ptr) {
 static void on_dc_message(int ws, const char *message, int size, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     if (!ctx) return;
-    if (size != sizeof(struct inputBuffer)) {
+    if (size != sizeof(struct InputBuffer)) {
         printf("Player buffer size mismatch in received webrtc.\n");
     }
-    struct inputBuffer *buf = (struct inputBuffer*)message;
+    struct InputBuffer *buf = (struct InputBuffer*)message;
     if (ctx->player_idx >= 0 ) {
         input_buffer_player(server_ctx->inputBuffers, buf, ctx->player_idx);
     }
+}
+void sendPlayerData(const struct Player *players, int count, const ClientContext *ctx) {
+    rtcSendMessage(ctx->dc_player, (char*)players, sizeof(struct Player) * count);
+}
+void sendProjectileData(const struct Projectile *projectiles, int count, const ClientContext *ctx) {
+    rtcSendMessage(ctx->dc_projectiles, (char*)projectiles, sizeof(struct Projectile) * count);
 }
 static void on_ws_open(int ws, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
@@ -108,10 +114,11 @@ static void on_ws_open(int ws, void *ptr) {
     rtcSetLocalDescriptionCallback(ctx->pc, on_local_description);
     rtcSetLocalCandidateCallback(ctx->pc, on_local_candidate);
 
-    ctx->dc = rtcCreateDataChannel(ctx->pc, "game-data");
-    rtcSetUserPointer(ctx->dc, ctx);
-    rtcSetOpenCallback(ctx->dc, on_dc_open);
-    rtcSetMessageCallback(ctx->dc, on_dc_message);
+    ctx->dc_player = rtcCreateDataChannel(ctx->pc, "player-data");
+    ctx->dc_projectiles = rtcCreateDataChannel(ctx->pc, "projectile-data");
+    rtcSetUserPointer(ctx->dc_player, ctx);
+    rtcSetOpenCallback(ctx->dc_player, on_dc_open);
+    rtcSetMessageCallback(ctx->dc_player, on_dc_message);
 }
 
 static void on_ws_closed(int ws, void *ptr) {
@@ -122,7 +129,8 @@ static void on_ws_closed(int ws, void *ptr) {
             //close_player(server_ctx->players, ctx->player_idx);
             memset(&server_ctx->clients[ctx->player_idx], 0, sizeof(ClientContext));
         }
-        if (ctx->dc) rtcDeletePeerConnection(ctx->dc);
+        if (ctx->dc_player) rtcDeletePeerConnection(ctx->dc_player);
+        if (ctx->dc_projectiles) rtcDeletePeerConnection(ctx->dc_projectiles);
         if (ctx->pc) rtcDeletePeerConnection(ctx->pc);
         free(ctx);
     }

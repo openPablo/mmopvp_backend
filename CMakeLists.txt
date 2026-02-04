@@ -5,8 +5,8 @@ set(CMAKE_C_STANDARD 11)
 find_package(LibDataChannel REQUIRED)
 add_executable(pvpmmo_backend main.c networking.c
         uthash.h
-        utlist.h)
+)
 set(CMAKE_INSTALL_RPATH "/usr/local/lib")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath,/usr/local/lib")
-target_link_libraries(pvpmmo_backend PRIVATE datachannel)
+target_link_libraries(pvpmmo_backend PRIVATE datachannel m)

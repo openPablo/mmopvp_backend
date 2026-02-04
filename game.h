@@ -45,17 +45,30 @@ struct Player {
     uint16_t health;
 };
 #pragma pack(pop)
-
 #pragma pack(push, 1)
-struct inputBuffer {
+struct InputBuffer {
     float dir_x;
     float dir_y;
     float angle;
     uint8_t castSpell;
 };
 #pragma pack(pop)
+#pragma pack(push, 1)
+struct Projectile {
+    float x;
+    float y;
+    float dx;
+    float dy;
+    uint16_t id;
+};
+#pragma pack(pop)
+
+struct ProjectilePool{
+    struct Projectile array[MAX_PLAYERS * 20];
+    int length;
+} ;
 int spawn_player(struct Player *players);
 void close_player(struct Player *players, int i);
-void input_buffer_player(struct inputBuffer *buffers, struct inputBuffer *buf, int idx);
+void input_buffer_player(struct InputBuffer *buffers, struct InputBuffer *buf, int idx);
 
 #endif

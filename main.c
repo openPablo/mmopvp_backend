@@ -1,7 +1,6 @@
 #include <stdio.h>
-#include <stdlib.h>
+#include <math.h>
 #include <time.h>
-#include <unistd.h>
 
 #include "networking.h"
 #include "game.h"
@@ -25,14 +24,26 @@ int spawn_player(struct Player *players) {
     }
     return -1;
 }
+
+void shoot_projectile(int id, float x, float y, float angle, struct ProjectilePool *projectiles) {
+    struct Projectile projectile = {
+        .x=x,
+        .y=y,
+        .dx=(float)cos(M_PI / 180 * angle),
+        .dy=(float)sin(M_PI / 180 * angle),
+        .id=(uint8_t)id
+    };
+    projectiles->array[projectiles->length] = projectile;
+    projectiles->length++;
+}
 void close_player(struct Player *players, const int i) {
     printf("Player %d closed\n", i);
     players[i].flags = ~ACTIVE;
 }
-void input_buffer_player(struct inputBuffer *buffers, struct inputBuffer *buf, int idx) {
+void input_buffer_player(struct InputBuffer *buffers, struct InputBuffer *buf, int idx) {
     buffers[idx] = *buf;
 }
-void sync_buffer_to_player(struct Player *players, struct inputBuffer *buffers) {
+void sync_buffer_to_player(struct Player *players, struct InputBuffer *buffers, struct ProjectilePool *projectiles) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (players[i].flags & ACTIVE) {
             players[i].x += buffers[i].dir_x * SPEED;
@@ -43,6 +54,7 @@ void sync_buffer_to_player(struct Player *players, struct inputBuffer *buffers) 
             if (buffers[i].castSpell > 0 && !(players[i].flags & IS_CASTING)) {
                 players[i].flags |= buffers[i].castSpell; //todo: only allow one spell at a time to be
                 players[i].animating_ms = HERO_DATA[players[i].hero].cast_time_ms;
+                shoot_projectile(i,players[i].x,players[i].y,players[i].angle,projectiles); //todo: Check if spell casted needs to shoot a projectile or not
                 buffers[i].castSpell = 0;
             }
             if (players[i].flags & IS_CASTING) {
@@ -55,7 +67,13 @@ void sync_buffer_to_player(struct Player *players, struct inputBuffer *buffers) 
         }
     }
 }
-void update_player_clients(struct Player *players, ClientContext *clients) {
+void move_projectiles(float bulletSpeed, struct ProjectilePool *projectiles) {
+    for (int i = 0; i < projectiles->length; i++) {
+        projectiles->array[i].x += projectiles->array[i].dx * bulletSpeed;
+        projectiles->array[i].y += projectiles->array[i].dy * bulletSpeed;
+    }
+}
+void update_player_clients(const struct Player *players,const struct ProjectilePool *projectiles, const ClientContext *clients) {
     struct Player active_players[MAX_PLAYERS];
     int count = 0;
     for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -66,13 +84,12 @@ void update_player_clients(struct Player *players, ClientContext *clients) {
     }
     for (int i = 0; i < MAX_PLAYERS ; i++) {
         if (players[i].flags & ACTIVE) {
-            if (clients[i].dc) {
-                rtcSendMessage(clients[i].dc, (char*)active_players, sizeof(struct Player) * count);
-            }
+            sendPlayerData(active_players, count , &clients[i]);
+            sendProjectileData(projectiles->array, projectiles->length, &clients[i]);
         }
     }
 }
-void game_loop(struct Player *players, struct inputBuffer *buffers, ClientContext *clients) {
+void game_loop(struct Player *players, struct InputBuffer *buffers, ClientContext *clients, struct ProjectilePool *projectiles) {
     struct timespec ts;
     uint64_t next_tick;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -80,15 +97,23 @@ void game_loop(struct Player *players, struct inputBuffer *buffers, ClientContex
     printf("Game loop started at %dms tickrate.\n", TICK_RATE_MS);
 
     while (1) {
-        sync_buffer_to_player(players, buffers);
-        update_player_clients(players, clients);
+        // Record start of work
+        struct timespec start_ts, end_ts;
+        clock_gettime(CLOCK_MONOTONIC, &start_ts);
 
+        sync_buffer_to_player(players, buffers, projectiles);
+        move_projectiles(50, projectiles);
+        update_player_clients(players, projectiles, clients);
 
-
+        // Calculate elapsed
+        clock_gettime(CLOCK_MONOTONIC, &end_ts);
+        uint64_t elapsed_ns = (end_ts.tv_sec - start_ts.tv_sec) * NS_PER_SEC + (end_ts.tv_nsec - start_ts.tv_nsec);
+        printf("Loop processing time: %f ms\n", (double)elapsed_ns / NS_PER_MS);
 
         next_tick += (TICK_RATE_MS * NS_PER_MS);
         clock_gettime(CLOCK_MONOTONIC, &ts);
         uint64_t now = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
+
         if (now < next_tick) {
             struct timespec sleep_ts;
             uint64_t diff = next_tick - now;
@@ -101,9 +126,10 @@ void game_loop(struct Player *players, struct inputBuffer *buffers, ClientContex
 
 int main() {
     struct Player players[MAX_PLAYERS] = {0};
-    struct inputBuffer buffers[MAX_PLAYERS] = {0};
+    struct InputBuffer buffers[MAX_PLAYERS] = {0};
     ClientContext clients[MAX_PLAYERS] = {0};
     struct authenticatedPlayer *authenticatedPlayers = NULL;
+    struct ProjectilePool projectiles;
 
     ServerContext server_ctx = {
         .players = players,
@@ -118,7 +144,7 @@ int main() {
     }
 
     printf("Signaling server listening on port %d...\n", PORT);
-    game_loop(players, buffers, clients);
+    game_loop(players, buffers, clients, &projectiles);
 
     stop_networking_server(server);
     cleanup_networking();
