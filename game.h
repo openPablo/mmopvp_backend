@@ -34,7 +34,7 @@ static const struct HeroStats HERO_DATA[] = {
     [ROGUE] = { .cast_time_ms = 400, .base_health = 100 }
 };
 #pragma pack(push, 1)
-struct Player {
+struct Player { //ToDO: convert x/y to sint16
     float x;
     float y;
     float angle;
@@ -50,16 +50,19 @@ struct InputBuffer {
     float dir_x;
     float dir_y;
     float angle;
+    int16_t x;
+    int16_t y;
     uint8_t castSpell;
 };
 #pragma pack(pop)
 #pragma pack(push, 1)
 struct Projectile {
-    float x;
-    float y;
     float dx;
     float dy;
+    float x;
+    float y;
     uint16_t id;
+    uint8_t castSpell;
 };
 #pragma pack(pop)
 

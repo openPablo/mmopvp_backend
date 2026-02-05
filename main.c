@@ -6,7 +6,8 @@
 #include "game.h"
 
 #define PORT 8080
-const float SPEED = 20.0f;
+const float SPEED = 15.0f;
+const float PROJECTILESPEED = 20.0f;
 
 int spawn_player(struct Player *players) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -25,16 +26,19 @@ int spawn_player(struct Player *players) {
     return -1;
 }
 
-void shoot_projectile(int id, float x, float y, float angle, struct ProjectilePool *projectiles) {
+void shoot_projectile(int id, const struct InputBuffer *buffers, struct ProjectilePool *projectiles, struct ProjectilePool *newProjectiles) {
     struct Projectile projectile = {
-        .x=x,
-        .y=y,
-        .dx=(float)cos(M_PI / 180 * angle),
-        .dy=(float)sin(M_PI / 180 * angle),
-        .id=(uint8_t)id
+        .x=buffers[id].x,
+        .y=buffers[id].y,
+        .dx=(float)cos(M_PI / 180 * buffers[id].angle),
+        .dy=(float)sin(M_PI / 180 * buffers[id].angle),
+        .id=(uint8_t)id,
+        .castSpell=buffers[id].castSpell
     };
     projectiles->array[projectiles->length] = projectile;
     projectiles->length++;
+    newProjectiles->array[newProjectiles->length] = projectile;
+    newProjectiles->length++;
 }
 void close_player(struct Player *players, const int i) {
     printf("Player %d closed\n", i);
@@ -43,7 +47,7 @@ void close_player(struct Player *players, const int i) {
 void input_buffer_player(struct InputBuffer *buffers, struct InputBuffer *buf, int idx) {
     buffers[idx] = *buf;
 }
-void sync_buffer_to_player(struct Player *players, struct InputBuffer *buffers, struct ProjectilePool *projectiles) {
+void buffer_status_to_players(struct Player *players, struct InputBuffer *buffers, struct ProjectilePool *projectiles, struct ProjectilePool *newProjectiles) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (players[i].flags & ACTIVE) {
             players[i].x += buffers[i].dir_x * SPEED;
@@ -54,7 +58,7 @@ void sync_buffer_to_player(struct Player *players, struct InputBuffer *buffers, 
             if (buffers[i].castSpell > 0 && !(players[i].flags & IS_CASTING)) {
                 players[i].flags |= buffers[i].castSpell; //todo: only allow one spell at a time to be
                 players[i].animating_ms = HERO_DATA[players[i].hero].cast_time_ms;
-                shoot_projectile(i,players[i].x,players[i].y,players[i].angle,projectiles); //todo: Check if spell casted needs to shoot a projectile or not
+                shoot_projectile(i,buffers,projectiles, newProjectiles); //todo: Check if spell casted needs to shoot a projectile or not
                 buffers[i].castSpell = 0;
             }
             if (players[i].flags & IS_CASTING) {
@@ -67,13 +71,13 @@ void sync_buffer_to_player(struct Player *players, struct InputBuffer *buffers, 
         }
     }
 }
-void move_projectiles(float bulletSpeed, struct ProjectilePool *projectiles) {
+void move_projectiles(struct ProjectilePool *projectiles) {
     for (int i = 0; i < projectiles->length; i++) {
-        projectiles->array[i].x += projectiles->array[i].dx * bulletSpeed;
-        projectiles->array[i].y += projectiles->array[i].dy * bulletSpeed;
+        projectiles->array[i].x += projectiles->array[i].dx * PROJECTILESPEED;
+        projectiles->array[i].y += projectiles->array[i].dy * PROJECTILESPEED;
     }
 }
-void update_player_clients(const struct Player *players,const struct ProjectilePool *projectiles, const ClientContext *clients) {
+void update_player_clients(const struct Player *players,const struct ProjectilePool *newProjectiles, const ClientContext *clients) {
     struct Player active_players[MAX_PLAYERS];
     int count = 0;
     for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -85,7 +89,7 @@ void update_player_clients(const struct Player *players,const struct ProjectileP
     for (int i = 0; i < MAX_PLAYERS ; i++) {
         if (players[i].flags & ACTIVE) {
             sendPlayerData(active_players, count , &clients[i]);
-            sendProjectileData(projectiles->array, projectiles->length, &clients[i]);
+            sendProjectileData(newProjectiles->array, newProjectiles->length, &clients[i]);
         }
     }
 }
@@ -95,17 +99,16 @@ void game_loop(struct Player *players, struct InputBuffer *buffers, ClientContex
     clock_gettime(CLOCK_MONOTONIC, &ts);
     next_tick = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
     printf("Game loop started at %dms tickrate.\n", TICK_RATE_MS);
-
+    struct ProjectilePool newProjectiles = {0};
     while (1) {
-        // Record start of work
         struct timespec start_ts, end_ts;
         clock_gettime(CLOCK_MONOTONIC, &start_ts);
+        newProjectiles.length = 0;
 
-        sync_buffer_to_player(players, buffers, projectiles);
-        move_projectiles(50, projectiles);
-        update_player_clients(players, projectiles, clients);
+        buffer_status_to_players(players, buffers, projectiles, &newProjectiles);
+        update_player_clients(players, &newProjectiles, clients);
+        move_projectiles(projectiles);
 
-        // Calculate elapsed
         clock_gettime(CLOCK_MONOTONIC, &end_ts);
         uint64_t elapsed_ns = (end_ts.tv_sec - start_ts.tv_sec) * NS_PER_SEC + (end_ts.tv_nsec - start_ts.tv_nsec);
         printf("Loop processing time: %f ms\n", (double)elapsed_ns / NS_PER_MS);
