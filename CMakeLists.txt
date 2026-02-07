@@ -15,5 +15,7 @@ add_executable(pvpmmo_backend
         main.c
         networking.c
         uthash.h
+        character_logic.c
+        character_logic.h
 )
 target_link_libraries(pvpmmo_backend PRIVATE LibDataChannel::LibDataChannel m)

@@ -3,7 +3,7 @@
 #include <time.h>
 
 #include "networking.h"
-#include "gameData.h"
+#include "gameDataStructures.h"
 
 int spawn_player(struct Player *players) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -55,30 +55,20 @@ void close_player(struct Player *players, const int i) {
 void input_buffer_player(struct InputBuffer *buffers, struct InputBuffer *buf, int idx) {
     buffers[idx] = *buf;
 }
-void buffer_status_to_players(struct Player *players, struct InputBuffer *buffers, struct ProjectilePool *projectiles, struct ProjectilePool *newProjectiles) {
+void sync_inputbuffer_to_players(struct Player *players, struct InputBuffer *buffers) {
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (players[i].flags & ACTIVE) {
             players[i].x += buffers[i].dir_x * SPEED;
             players[i].y += buffers[i].dir_y * SPEED;
             players[i].angle = buffers[i].angle;
+            players[i].flags |= buffers[i].castSpell;
+            buffers[i].castSpell = 0;
             buffers[i].dir_x  = 0.0f;
             buffers[i].dir_y  = 0.0f;
-            if (buffers[i].castSpell > 0 && !(players[i].flags & IS_CASTING)) {
-                players[i].flags |= buffers[i].castSpell; //todo: only allow one spell at a time to be
-                players[i].animating_ms = HERO_DATA[players[i].hero].cast_time_ms;
-                shoot_projectile(i,buffers,projectiles, newProjectiles); //todo: Check if spell casted needs to shoot a projectile or not
-                buffers[i].castSpell = 0;
-            }
-            if (players[i].flags & IS_CASTING) {
-                players[i].animating_ms -= TICK_RATE_MS;
-                if (players[i].animating_ms <= 0) {
-                    players[i].flags &= ~IS_CASTING;
-                }
-            }
-
         }
     }
 }
+
 void move_projectiles(struct ProjectilePool *projectiles, struct intPool *explodingProjectiles) {
     for (int i = 0; i < projectiles->length; i++) {
         if (projectiles->array[i].travelled <= 0) {
@@ -113,7 +103,7 @@ void update_player_clients(const ClientContext *clients, const struct Player *pl
         }
     }
 }
-void game_loop(struct Player *players, struct InputBuffer *buffers,const ClientContext *clients) {
+void game_loop(struct PlayerPool *airmages, struct InputBuffer *buffers,const ClientContext *clients) {
     struct timespec ts;
     uint64_t next_tick;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -129,9 +119,9 @@ void game_loop(struct Player *players, struct InputBuffer *buffers,const ClientC
         newProjectiles.length = 0;
         explodingProjectiles.length = 0;
 
-        buffer_status_to_players(players, buffers, &projectiles, &newProjectiles);
+        sync_inputbuffer_to_players(airmages->array, buffers);
         move_projectiles(&projectiles, &explodingProjectiles);
-        update_player_clients(clients, players, &newProjectiles, &explodingProjectiles);
+        update_player_clients(clients, airmages->array, &newProjectiles, &explodingProjectiles);
 
         clock_gettime(CLOCK_MONOTONIC, &end_ts);
         uint64_t elapsed_ns = (end_ts.tv_sec - start_ts.tv_sec) * NS_PER_SEC + (end_ts.tv_nsec - start_ts.tv_nsec);
@@ -152,13 +142,13 @@ void game_loop(struct Player *players, struct InputBuffer *buffers,const ClientC
 }
 
 int main() {
-    struct Player players[MAX_PLAYERS] = {0};
+    struct PlayerPool airmages = {0};
     struct InputBuffer buffers[MAX_PLAYERS] = {0};
     ClientContext clients[MAX_PLAYERS] = {0};
     struct authenticatedPlayer *authenticatedPlayers = NULL;
 
     ServerContext server_ctx = {
-        .players = players,
+        .players = airmages.array,
         .inputBuffers = buffers,
         .clients = clients,
         .authenticatedPlayers = authenticatedPlayers
@@ -170,7 +160,7 @@ int main() {
     }
 
     printf("Signaling server listening on port %d...\n", PORT);
-    game_loop(players, buffers, clients);
+    game_loop(&airmages, buffers, clients);
 
     stop_networking_server(server);
     cleanup_networking();

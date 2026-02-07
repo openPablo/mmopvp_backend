@@ -2,7 +2,7 @@
 #define NETWORKING_H
 
 #include <rtc/rtc.h>
-#include "gameData.h"
+#include "gameDataStructures.h"
 #include "uthash.h"
 #define PORT 8080
 

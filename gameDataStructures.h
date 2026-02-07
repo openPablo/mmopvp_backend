@@ -52,6 +52,10 @@ struct Player { //ToDO: convert x/y to sint16
     uint16_t health;
 };
 #pragma pack(pop)
+struct PlayerPool {
+    struct Player array[MAX_PLAYERS];
+    short length;
+};
 #pragma pack(push, 1)
 struct InputBuffer {
     float dir_x;
