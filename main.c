@@ -5,7 +5,7 @@
 
 #include "networking.h"
 #include "gameDataStructures.h"
-atomic_uint_fast16_t THREADSAFE_PLAYER_ID = 1;
+atomic_uint_fast16_t THREADSAFE_PLAYER_ID = 0;
 
 
 int spawn_player(struct PlayerPool *players, Hero hero) {
@@ -94,25 +94,12 @@ void move_projectiles(struct ProjectilePool *projectiles, struct intPool *explod
         }
     }
 }
-void update_player_clients(const ClientContext *clients, const struct Player *players,const struct ProjectilePool *newProjectiles, const struct intPool *explodingProjectiles ) {
-    struct Player active_players[MAX_PLAYERS];
-    int count = 0;
-    for (int i = 0; i < MAX_PLAYERS; i++) {
-        if (players[i].flags & ACTIVE) {
-            active_players[count] = players[i];
-            count++;
-        }
-    }
+void update_player_clients(const ClientContext *clients, const struct PlayerPool *players,const struct ProjectilePool *newProjectiles, const struct intPool *explodingProjectiles ) {
     for (int i = 0; i < MAX_PLAYERS ; i++) {
         if (clients[i].dc_player > 0) {
-            sendPlayerData(active_players, count , &clients[i]);
-
-            if (newProjectiles && newProjectiles->length > 0) {
-                sendNewProjectilesData(newProjectiles, &clients[i]);
-            }
-            if (explodingProjectiles && explodingProjectiles->length > 0) {
-                sendExplodingProjectilesData(explodingProjectiles, &clients[i]);
-            }
+            sendPlayerData(players, &clients[i]);
+            sendNewProjectilesData(newProjectiles, &clients[i]);
+            sendExplodingProjectilesData(explodingProjectiles, &clients[i]);
         }
     }
 }
@@ -132,13 +119,13 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer *buffers,const Cl
         newProjectiles.length = 0;
         explodingProjectiles.length = 0;
 
-        sync_inputbuffer_to_players(airmages->array, buffers);
+        sync_inputbuffer_to_players(airmages, buffers);
         move_projectiles(&projectiles, &explodingProjectiles);
-        update_player_clients(clients, airmages->array, &newProjectiles, &explodingProjectiles);
+        update_player_clients(clients, airmages, &newProjectiles, &explodingProjectiles);
 
         clock_gettime(CLOCK_MONOTONIC, &end_ts);
         uint64_t elapsed_ns = (end_ts.tv_sec - start_ts.tv_sec) * NS_PER_SEC + (end_ts.tv_nsec - start_ts.tv_nsec);
-        //printf("Loop processing time: %f ms\n", (double)elapsed_ns / NS_PER_MS);
+        printf("Loop processing time: %f ms\n", (double)elapsed_ns / NS_PER_MS);
 
         next_tick += (TICK_RATE_MS * NS_PER_MS);
         clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -161,7 +148,7 @@ int main() {
     struct authenticatedPlayer *authenticatedPlayers = NULL;
 
     ServerContext server_ctx = {
-        .players = airmages.array,
+        .playerPool = &airmages,
         .inputBuffers = buffers,
         .clients = clients,
         .authenticatedPlayers = authenticatedPlayers

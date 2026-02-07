@@ -31,7 +31,7 @@ typedef struct ClientContext {
 int start_networking_server(int port, ServerContext *ctx);
 void stop_networking_server(int server);
 void cleanup_networking();
-void sendPlayerData(const struct Player *players, int count, const ClientContext *ctx);
+void sendPlayerData(const struct PlayerPool *players, const ClientContext *ctx);
 void sendNewProjectilesData(const struct ProjectilePool *projectilePool, const ClientContext *ctx);
 void sendExplodingProjectilesData(const struct intPool *exploding, const ClientContext *ctx);
 #endif // NETWORKING_H

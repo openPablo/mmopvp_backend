@@ -63,7 +63,7 @@ static void on_dc_open(int dc, void *ptr) {
     if (!server_ctx) return;
     struct authenticatedPlayer *player = find_player(ctx->bearer_token,&server_ctx->authenticatedPlayers);
     if (!player) {
-        int idx = spawn_player(server_ctx->players, AIRMAGE);
+        int idx = spawn_player(server_ctx->playerPool, AIRMAGE);
         if (idx >= 0) {
             ctx->player_idx = idx;
             server_ctx->clients[idx] = *ctx;
@@ -92,14 +92,20 @@ static void on_dc_message(int ws, const char *message, int size, void *ptr) {
         input_buffer_player(server_ctx->inputBuffers, buf, ctx->player_idx);
     }
 }
-void sendPlayerData(const struct Player *players, int count, const ClientContext *ctx) {
-    rtcSendMessage(ctx->dc_player, (char*)players, sizeof(struct Player) * count);
+void sendPlayerData(const struct PlayerPool *players, const ClientContext *ctx) {
+    if (players && players->length > 0) {
+        rtcSendMessage(ctx->dc_player, (char*)players->array, sizeof(struct Player) * players->length);
+    }
 }
 void sendNewProjectilesData(const struct ProjectilePool *projectilePool, const ClientContext *ctx) {
-    rtcSendMessage(ctx->dc_projectiles, (char*)projectilePool->array, sizeof(struct Projectile) * projectilePool->length);
+    if (projectilePool && projectilePool->length > 0) {
+        rtcSendMessage(ctx->dc_projectiles, (char*)projectilePool->array, sizeof(struct Projectile) * projectilePool->length);
+    }
 }
 void sendExplodingProjectilesData(const struct intPool *exploding, const ClientContext *ctx) {
-    rtcSendMessage(ctx->dc_explodingProjectiles, (char*)exploding->array, sizeof(short) * exploding->length);
+    if (exploding && exploding->length > 0) {
+        rtcSendMessage(ctx->dc_explodingProjectiles, (char*)exploding->array, sizeof(short) * exploding->length);
+    }
 }
 static void on_ws_open(int ws, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
@@ -109,8 +115,7 @@ static void on_ws_open(int ws, void *ptr) {
     };
     rtcConfiguration config = {
         .iceServers = ice_servers,
-        .iceServersCount = 1,
-        .bindAddress = "127.0.0.1",
+        .iceServersCount = 0,
         .disableAutoNegotiation = false
     };
     ctx->pc = rtcCreatePeerConnection(&config);
