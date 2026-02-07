@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "game.h"
+#include "gameData.h"
 
 static ServerContext *server_ctx = NULL;
 
@@ -95,8 +95,11 @@ static void on_dc_message(int ws, const char *message, int size, void *ptr) {
 void sendPlayerData(const struct Player *players, int count, const ClientContext *ctx) {
     rtcSendMessage(ctx->dc_player, (char*)players, sizeof(struct Player) * count);
 }
-void sendProjectileData(const struct Projectile *projectiles, int count, const ClientContext *ctx) {
-    rtcSendMessage(ctx->dc_projectiles, (char*)projectiles, sizeof(struct Projectile) * count);
+void sendNewProjectilesData(const struct ProjectilePool *projectilePool, const ClientContext *ctx) {
+    rtcSendMessage(ctx->dc_projectiles, (char*)projectilePool->array, sizeof(struct Projectile) * projectilePool->length);
+}
+void sendExplodingProjectilesData(const struct intPool *exploding, const ClientContext *ctx) {
+    rtcSendMessage(ctx->dc_explodingProjectiles, (char*)exploding->array, sizeof(short) * exploding->length);
 }
 static void on_ws_open(int ws, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
@@ -115,7 +118,8 @@ static void on_ws_open(int ws, void *ptr) {
     rtcSetLocalCandidateCallback(ctx->pc, on_local_candidate);
 
     ctx->dc_player = rtcCreateDataChannel(ctx->pc, "player-data");
-    ctx->dc_projectiles = rtcCreateDataChannel(ctx->pc, "projectile-data");
+    ctx->dc_projectiles = rtcCreateDataChannel(ctx->pc, "projectiles");
+    ctx->dc_explodingProjectiles = rtcCreateDataChannel(ctx->pc, "exploding-projectiles");
     rtcSetUserPointer(ctx->dc_player, ctx);
     rtcSetOpenCallback(ctx->dc_player, on_dc_open);
     rtcSetMessageCallback(ctx->dc_player, on_dc_message);
@@ -125,12 +129,13 @@ static void on_ws_closed(int ws, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     printf("Client disconnected.\n");
     if (ctx) {
-        if (ctx->player_idx >= 0 && server_ctx) {
+        if (ctx->player_idx >= 0 && server_ctx) { //ToDo: implement timer to close player if he doesnt reconnect in 30s
             //close_player(server_ctx->players, ctx->player_idx);
             memset(&server_ctx->clients[ctx->player_idx], 0, sizeof(ClientContext));
         }
         if (ctx->dc_player) rtcDeletePeerConnection(ctx->dc_player);
         if (ctx->dc_projectiles) rtcDeletePeerConnection(ctx->dc_projectiles);
+        if (ctx->dc_explodingProjectiles) rtcDeletePeerConnection(ctx->dc_explodingProjectiles);
         if (ctx->pc) rtcDeletePeerConnection(ctx->pc);
         free(ctx);
     }

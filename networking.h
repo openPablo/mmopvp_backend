@@ -2,8 +2,9 @@
 #define NETWORKING_H
 
 #include <rtc/rtc.h>
-#include "game.h"
+#include "gameData.h"
 #include "uthash.h"
+#define PORT 8080
 
 typedef struct {
     struct Player *players;
@@ -22,6 +23,7 @@ typedef struct ClientContext {
     int pc;
     int dc_player;
     int dc_projectiles;
+    int dc_explodingProjectiles;
     char bearer_token[31];
     int player_idx;
 } ClientContext;
@@ -30,5 +32,6 @@ int start_networking_server(int port, ServerContext *ctx);
 void stop_networking_server(int server);
 void cleanup_networking();
 void sendPlayerData(const struct Player *players, int count, const ClientContext *ctx);
-void sendProjectileData(const struct Projectile *projectiles, int count, const ClientContext *ctx);
+void sendNewProjectilesData(const struct ProjectilePool *projectilePool, const ClientContext *ctx);
+void sendExplodingProjectilesData(const struct intPool *exploding, const ClientContext *ctx);
 #endif // NETWORKING_H

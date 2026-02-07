@@ -3,6 +3,13 @@
 #include <stdint.h>
 
 #define MAX_PLAYERS 1000
+#define SPEED 15.0f;
+
+
+#define PROJECTILES_MAX 5000 //Assuming max 10k projectiles will be in flight and 1k will explode at the same game tick
+#define PROJECTILE_SPEED 20.0f;
+#define PROJECTILE_DISTANCE 400.0f
+
 #define TICK_RATE_MS 66
 #define NS_PER_MS 1000000
 #define NS_PER_SEC 1000000000
@@ -61,15 +68,20 @@ struct Projectile {
     float dy;
     float x;
     float y;
+    int travelled;
     uint16_t id;
     uint8_t castSpell;
 };
 #pragma pack(pop)
 
 struct ProjectilePool{
-    struct Projectile array[MAX_PLAYERS * 20];
-    int length;
-} ;
+    struct Projectile array[PROJECTILES_MAX];
+    short length;
+};
+struct intPool{
+    short array[PROJECTILES_MAX/10];
+    short length;
+};
 int spawn_player(struct Player *players);
 void close_player(struct Player *players, int i);
 void input_buffer_player(struct InputBuffer *buffers, struct InputBuffer *buf, int idx);
