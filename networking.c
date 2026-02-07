@@ -104,13 +104,15 @@ void sendExplodingProjectilesData(const struct intPool *exploding, const ClientC
 static void on_ws_open(int ws, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     printf("WebSocket open. Initializing PeerConnection.\n");
-
+    const char *ice_servers[] = {
+        "stun:stun.l.google.com:19302"
+    };
     rtcConfiguration config = {
-        .iceServers = NULL,
-        .iceServersCount = 0,
+        .iceServers = ice_servers,
+        .iceServersCount = 1,
+        .bindAddress = "127.0.0.1",
         .disableAutoNegotiation = false
     };
-
     ctx->pc = rtcCreatePeerConnection(&config);
     rtcSetUserPointer(ctx->pc, ctx);
 

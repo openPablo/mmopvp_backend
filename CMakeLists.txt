@@ -1,12 +1,19 @@
-cmake_minimum_required(VERSION 4.1)
-project(pvpmmo_backend C)
+cmake_minimum_required(VERSION 3.14)
+project(pvpmmo_backend C CXX)
 
 set(CMAKE_C_STANDARD 11)
-find_package(LibDataChannel REQUIRED)
-add_executable(pvpmmo_backend main.c networking.c
+
+include(FetchContent)
+FetchContent_Declare(
+        libdatachannel
+        GIT_REPOSITORY https://github.com/paullouisageneau/libdatachannel.git
+        GIT_TAG        v0.24.1
+)
+FetchContent_MakeAvailable(libdatachannel)
+
+add_executable(pvpmmo_backend
+        main.c
+        networking.c
         uthash.h
 )
-set(CMAKE_INSTALL_RPATH "/usr/local/lib")
-set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath,/usr/local/lib")
-target_link_libraries(pvpmmo_backend PRIVATE datachannel m)
+target_link_libraries(pvpmmo_backend PRIVATE LibDataChannel::LibDataChannel m)
