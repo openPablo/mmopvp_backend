@@ -63,7 +63,7 @@ static void on_dc_open(int dc, void *ptr) {
     if (!server_ctx) return;
     struct authenticatedPlayer *player = find_player(ctx->bearer_token,&server_ctx->authenticatedPlayers);
     if (!player) {
-        int idx = spawn_player(server_ctx->players);
+        int idx = spawn_player(server_ctx->players, AIRMAGE);
         if (idx >= 0) {
             ctx->player_idx = idx;
             server_ctx->clients[idx] = *ctx;

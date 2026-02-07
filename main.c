@@ -1,24 +1,34 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <stdatomic.h>
 
 #include "networking.h"
 #include "gameDataStructures.h"
+atomic_uint_fast16_t THREADSAFE_PLAYER_ID = 1;
 
-int spawn_player(struct Player *players) {
-    for (int i = 0; i < MAX_PLAYERS; i++) {
-        if (!(players[i].flags & ACTIVE)) {
-            players[i].x = 500.0f;
-            players[i].y = 100.0f;
-            players[i].angle = 0.0f;
-            players[i].id = i;
-            players[i].hero |= AIRMAGE;
-            players[i].flags |= ACTIVE;
-            players[i].animating_ms = 0;
-            return i;
-        }
+
+int spawn_player(struct PlayerPool *players, Hero hero) {
+    atomic_uint_fast16_t id = atomic_fetch_add(&THREADSAFE_PLAYER_ID, 1);
+    atomic_uint_fast16_t index = atomic_fetch_add(&players->length, 1);
+    if (index >= MAX_PLAYERS) {
+        atomic_fetch_sub(&players->length, 1);
+        return -1;
     }
-    return -1;
+
+    struct Player player;
+    player.x = 500.0f;
+    player.y = 100.0f;
+    player.angle = 0.0f;
+    player.id = id;
+    player.health = 100;
+    player.hero = hero;
+    player.state = IDLE;
+    player.animating_ms = 0;
+
+    players->array[index] = player;
+
+    return id;
 }
 
 void shoot_projectile(int id, const struct InputBuffer *buffers, struct ProjectilePool *projectiles, struct ProjectilePool *newProjectiles) {
@@ -48,24 +58,27 @@ void detect_collission_projectiles(struct ProjectilePool *projectiles, struct Pl
         i--;
     }
 }
-void close_player(struct Player *players, const int i) {
-    printf("Player %d closed\n", i);
-    players[i].flags = ~ACTIVE;
+void close_player(struct PlayerPool *players,int id) { //threadsafe
+    for (int i = 0; i < players->length; i++) {
+        if (players->array[i].id == id) {
+            atomic_uint_fast16_t indx  = atomic_fetch_sub(&players->length, 1);
+            players->array[i] = players->array[indx+1];
+            printf("Player %d closed\n", id);
+        }
+    }
 }
 void input_buffer_player(struct InputBuffer *buffers, struct InputBuffer *buf, int idx) {
-    buffers[idx] = *buf;
+    buffers[idx] = *buf;// todo
 }
-void sync_inputbuffer_to_players(struct Player *players, struct InputBuffer *buffers) {
-    for (int i = 0; i < MAX_PLAYERS; i++) {
-        if (players[i].flags & ACTIVE) {
-            players[i].x += buffers[i].dir_x * SPEED;
-            players[i].y += buffers[i].dir_y * SPEED;
-            players[i].angle = buffers[i].angle;
-            players[i].flags |= buffers[i].castSpell;
-            buffers[i].castSpell = 0;
-            buffers[i].dir_x  = 0.0f;
-            buffers[i].dir_y  = 0.0f;
-        }
+void sync_inputbuffer_to_players(struct PlayerPool *players, struct InputBuffer *buffers) {
+    for (int i = 0; i < players->length; i++) {
+        players->array[i].x += buffers[i].dir_x * SPEED;
+        players->array[i].y += buffers[i].dir_y * SPEED;
+        players->array[i].angle = buffers[i].angle;
+        players->array[i].state |= buffers[i].castSpell;
+        buffers[i].castSpell = 0;
+        buffers[i].dir_x  = 0.0f;
+        buffers[i].dir_y  = 0.0f;
     }
 }
 

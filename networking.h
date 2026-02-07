@@ -7,7 +7,7 @@
 #define PORT 8080
 
 typedef struct {
-    struct Player *players;
+    struct PlayerPool *playerPool;
     struct InputBuffer *inputBuffers;
     struct ClientContext *clients;
     struct authenticatedPlayer *authenticatedPlayers;

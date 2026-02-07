@@ -1,5 +1,6 @@
 #ifndef PVPMMO_BACKEND_GAME_H
 #define PVPMMO_BACKEND_GAME_H
+#include <stdatomic.h>
 #include <stdint.h>
 
 #define MAX_PLAYERS 1000
@@ -15,20 +16,21 @@
 #define NS_PER_SEC 1000000000
 
 typedef enum {
-    ACTIVE   = 1 << 0,
-    DEAD     = 1 << 1,
-    INVULNERABLE  = 1 << 2,
-    CASTING_1    = 1 << 3,
-    CASTING_2    = 1 << 5,
-    CASTING_3    = 1 << 6,
-    CASTING_ULTI    = 1 << 7
-} PlayerFlag;
-#define IS_CASTING (CASTING_1 | CASTING_2 | CASTING_3 | CASTING_ULTI)
+    IDLE,
+    WALKING,
+    DEAD,
+    CASTING_1,
+    CASTING_2,
+    CASTING_3,
+    CASTING_ULTI,
+    INVULNERABLE,
+    STUNNED
+} PlayerState;
 typedef enum {
-    AIRMAGE = 1 << 0,
-    PRIEST  = 1 << 1,
-    ROGUE   = 1 <<2
-} PlayerHero;
+    AIRMAGE,
+    PRIEST,
+    ROGUE
+} Hero;
 
 struct HeroStats {
     int cast_time_ms;
@@ -41,20 +43,20 @@ static const struct HeroStats HERO_DATA[] = {
     [ROGUE] = { .cast_time_ms = 400, .base_health = 100 }
 };
 #pragma pack(push, 1)
-struct Player { //ToDO: convert x/y to sint16
+struct Player {
     float x;
     float y;
     float angle;
     int animating_ms;
+    PlayerState state;
     uint16_t id;
-    uint16_t flags;
     uint16_t hero;
     uint16_t health;
 };
 #pragma pack(pop)
 struct PlayerPool {
     struct Player array[MAX_PLAYERS];
-    short length;
+    atomic_uint_fast16_t length;
 };
 #pragma pack(push, 1)
 struct InputBuffer {
@@ -86,8 +88,8 @@ struct intPool{
     short array[PROJECTILES_MAX/10];
     short length;
 };
-int spawn_player(struct Player *players);
-void close_player(struct Player *players, int i);
+int spawn_player(struct PlayerPool *players, Hero hero);
+void close_player(struct PlayerPool *players, int id);
 void input_buffer_player(struct InputBuffer *buffers, struct InputBuffer *buf, int idx);
 
 #endif
