@@ -24,6 +24,8 @@ typedef struct ClientContext {
     int dc_player;
     int dc_projectiles;
     int dc_explodingProjectiles;
+    int dc_cones;
+    int dc_circles;
     char bearer_token[31];
     uint16_t player_idx;
 } ClientContext;
@@ -34,4 +36,6 @@ void cleanup_networking();
 void sendPlayerData(const struct PlayerPool *players, const ClientContext *ctx);
 void sendNewProjectilesData(const struct ProjectilePool *projectilePool, const ClientContext *ctx);
 void sendExplodingProjectilesData(const struct intPool *exploding, const ClientContext *ctx);
+void sendNewConesData(const struct AoEConePool *pool, const ClientContext *ctx);
+void sendNewCirclesData(const struct AoECirclePool *pool, const ClientContext *ctx);
 #endif // NETWORKING_H

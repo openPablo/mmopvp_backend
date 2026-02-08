@@ -19,17 +19,17 @@ void setSpell(int animating_ms, struct Player *player, struct InputBuffer *buffe
     player->state = buffer->castSpell;
     buffer->castSpell = 0;
 }
-void compute_airmage_state(struct Player *player, struct InputBuffer *buffer, struct ProjectilePool *projectiles, struct ProjectilePool *newProjectiles) {
+void compute_airmage_state(struct Player *player, struct InputBuffer *buffer, struct SpellsContext *newSpells) {
     switch (player->state) {
         case IDLE:
         case WALKING:
             switch (buffer->castSpell) {
                 case CASTING_1:
-                    shoot_projectile(player->id,buffer,projectiles, newProjectiles);
+                    shoot_projectile(400, player->id,buffer, &newSpells->projectiles);
                     setSpell(400, player, buffer);
                     return;
                 case CASTING_2:
-
+                    cast_aoe_cone(100, player->id, buffer, &newSpells->cones);
                     setSpell(100, player, buffer);
                     return;
                 case CASTING_3:

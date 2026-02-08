@@ -97,9 +97,19 @@ void sendPlayerData(const struct PlayerPool *players, const ClientContext *ctx) 
         rtcSendMessage(ctx->dc_player, (char*)players->array, sizeof(struct Player) * players->length);
     }
 }
-void sendNewProjectilesData(const struct ProjectilePool *projectilePool, const ClientContext *ctx) {
-    if (projectilePool && projectilePool->length > 0) {
-        rtcSendMessage(ctx->dc_projectiles, (char*)projectilePool->array, sizeof(struct Projectile) * projectilePool->length);
+void sendNewProjectilesData(const struct ProjectilePool *pool, const ClientContext *ctx) {
+    if (pool && pool->length > 0) {
+        rtcSendMessage(ctx->dc_projectiles, (char*)pool->array, sizeof(struct Projectile) * pool->length);
+    }
+}
+void sendNewConesData(const struct AoEConePool *pool, const ClientContext *ctx) {
+    if (pool && pool->length > 0) {
+        rtcSendMessage(ctx->dc_cones, (char*)pool->array, sizeof(struct Projectile) * pool->length);
+    }
+}
+void sendNewCirclesData(const struct AoECirclePool *pool, const ClientContext *ctx) {
+    if (pool && pool->length > 0) {
+        rtcSendMessage(ctx->dc_circles, (char*)pool->array, sizeof(struct Projectile) * pool->length);
     }
 }
 void sendExplodingProjectilesData(const struct intPool *exploding, const ClientContext *ctx) {
@@ -126,6 +136,8 @@ static void on_ws_open(int ws, void *ptr) {
 
     ctx->dc_player = rtcCreateDataChannel(ctx->pc, "player-data");
     ctx->dc_projectiles = rtcCreateDataChannel(ctx->pc, "projectiles");
+    ctx->dc_cones = rtcCreateDataChannel(ctx->pc, "cones");
+    ctx->dc_circles = rtcCreateDataChannel(ctx->pc, "circles");
     ctx->dc_explodingProjectiles = rtcCreateDataChannel(ctx->pc, "exploding-projectiles");
     rtcSetUserPointer(ctx->dc_player, ctx);
     rtcSetOpenCallback(ctx->dc_player, on_dc_open);
@@ -143,6 +155,10 @@ static void on_ws_closed(int ws, void *ptr) {
         if (ctx->dc_player) rtcDeletePeerConnection(ctx->dc_player);
         if (ctx->dc_projectiles) rtcDeletePeerConnection(ctx->dc_projectiles);
         if (ctx->dc_explodingProjectiles) rtcDeletePeerConnection(ctx->dc_explodingProjectiles);
+        if (ctx->dc_cones) rtcDeletePeerConnection(ctx->dc_cones);
+        if (ctx->dc_circles) rtcDeletePeerConnection(ctx->dc_circles);
+
+
         if (ctx->pc) rtcDeletePeerConnection(ctx->pc);
         free(ctx);
     }

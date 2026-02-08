@@ -9,9 +9,9 @@
 #define SPEED 15.0f;
 
 
-#define PROJECTILES_MAX 5000 //Assuming max 10k projectiles will be in flight and 1k will explode at the same game tick
+#define SPELLS_MAX 4000 //amount of same sort of spells at the same time
+#define PROJECTILES_MAX 4000 //Assuming max 4k projectiles will be in flight and 1k will explode at the same game tick
 #define PROJECTILE_SPEED 20.0f;
-#define PROJECTILE_DISTANCE 400.0f
 
 #define TICK_RATE_MS 66
 #define NS_PER_MS 1000000
@@ -77,6 +77,7 @@ struct InputBuffer {
     UT_hash_handle hh;
 };
 
+
 #pragma pack(push, 1)
 struct Projectile {
     float dx;
@@ -96,6 +97,42 @@ struct ProjectilePool{
 struct intPool{
     short array[PROJECTILES_MAX/10];
     short length;
+};
+#pragma pack(push, 1)
+struct AoECone {
+    float x;
+    float y;
+    int time_ms;
+    uint16_t length;
+    uint16_t id;
+    uint8_t castSpell;
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct AoECircle {
+    float x;
+    float y;
+    int time_ms;
+    uint16_t radius;
+    uint16_t id;
+    uint8_t castSpell;
+};
+#pragma pack(pop)
+
+struct AoECirclePool{
+    struct AoECircle array[SPELLS_MAX];
+    short length;
+};
+struct AoEConePool{
+    struct AoECone array[SPELLS_MAX];
+    short length;
+};
+
+struct SpellsContext {
+    struct ProjectilePool projectiles;
+    struct AoEConePool cones;
+    struct AoECirclePool circles;;
 };
 int spawn_player(struct PlayerPool *players, Hero hero);
 void close_player(struct PlayerPool *players, struct InputBuffer **buffers, int id);
