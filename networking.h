@@ -8,7 +8,7 @@
 
 typedef struct {
     struct PlayerPool *playerPool;
-    struct InputBuffer *inputBuffers;
+    struct InputBuffer **inputBuffers;
     struct ClientContext *clients;
     struct authenticatedPlayer *authenticatedPlayers;
 } ServerContext;
@@ -25,7 +25,7 @@ typedef struct ClientContext {
     int dc_projectiles;
     int dc_explodingProjectiles;
     char bearer_token[31];
-    int player_idx;
+    uint16_t player_idx;
 } ClientContext;
 
 int start_networking_server(int port, ServerContext *ctx);

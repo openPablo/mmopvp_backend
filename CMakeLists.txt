@@ -15,7 +15,9 @@ add_executable(pvpmmo_backend
         main.c
         networking.c
         uthash.h
-        character_logic.c
-        character_logic.h
+        gamelogic/character_state_machines.c
+        gamelogic/character_state_machines.h
+        gamelogic/projectile.c
+        gamelogic/projectile.h
 )
 target_link_libraries(pvpmmo_backend PRIVATE LibDataChannel::LibDataChannel m)

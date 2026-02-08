@@ -84,12 +84,12 @@ static void on_dc_open(int dc, void *ptr) {
 static void on_dc_message(int ws, const char *message, int size, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     if (!ctx) return;
-    if (size != sizeof(struct InputBuffer)) {
+    if (size != sizeof(struct InputBufferNetwork)) {
         printf("Player buffer size mismatch in received webrtc.\n");
     }
-    struct InputBuffer *buf = (struct InputBuffer*)message;
+    struct InputBufferNetwork *buf = (struct InputBufferNetwork*)message;
     if (ctx->player_idx >= 0 ) {
-        input_buffer_player(server_ctx->inputBuffers, buf, ctx->player_idx);
+        save_inputbuffer(server_ctx->inputBuffers, buf, ctx->player_idx);
     }
 }
 void sendPlayerData(const struct PlayerPool *players, const ClientContext *ctx) {

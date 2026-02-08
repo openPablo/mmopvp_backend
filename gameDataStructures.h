@@ -3,6 +3,8 @@
 #include <stdatomic.h>
 #include <stdint.h>
 
+#include "uthash.h"
+
 #define MAX_PLAYERS 1000
 #define SPEED 15.0f;
 
@@ -59,7 +61,7 @@ struct PlayerPool {
     atomic_uint_fast16_t length;
 };
 #pragma pack(push, 1)
-struct InputBuffer {
+struct InputBufferNetwork {
     float dir_x;
     float dir_y;
     float angle;
@@ -67,7 +69,19 @@ struct InputBuffer {
     int16_t y;
     uint8_t castSpell;
 };
-#pragma pack(pop)
+#pragma
+
+struct InputBuffer {
+    float dir_x;
+    float dir_y;
+    float angle;
+    int id;
+    int16_t x;
+    int16_t y;
+    uint8_t castSpell;
+    UT_hash_handle hh;
+};
+
 #pragma pack(push, 1)
 struct Projectile {
     float dx;
@@ -89,7 +103,6 @@ struct intPool{
     short length;
 };
 int spawn_player(struct PlayerPool *players, Hero hero);
-void close_player(struct PlayerPool *players, int id);
-void input_buffer_player(struct InputBuffer *buffers, struct InputBuffer *buf, int idx);
-
+void close_player(struct PlayerPool *players, struct InputBuffer **buffers, int id);
+void save_inputbuffer(struct InputBuffer **buffers, struct InputBufferNetwork *net, int id);
 #endif

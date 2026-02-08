@@ -1,8 +1,0 @@
-//
-// Created by pablo on 2/7/26.
-//
-
-#ifndef PVPMMO_BACKEND_CHARACTER_LOGIC_H
-#define PVPMMO_BACKEND_CHARACTER_LOGIC_H
-
-#endif //PVPMMO_BACKEND_CHARACTER_LOGIC_H

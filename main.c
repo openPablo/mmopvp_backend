@@ -1,10 +1,11 @@
 #include <stdio.h>
-#include <math.h>
 #include <time.h>
 #include <stdatomic.h>
 
 #include "networking.h"
 #include "gameDataStructures.h"
+#include "gamelogic/character_state_machines.h"
+#include "gamelogic/projectile.h"
 atomic_uint_fast16_t THREADSAFE_PLAYER_ID = 0;
 
 
@@ -31,69 +32,50 @@ int spawn_player(struct PlayerPool *players, Hero hero) {
     return id;
 }
 
-void shoot_projectile(int id, const struct InputBuffer *buffers, struct ProjectilePool *projectiles, struct ProjectilePool *newProjectiles) {
-    struct Projectile projectile = {
-        .x=buffers[id].x,
-        .y=buffers[id].y,
-        .dx=(float)cos(M_PI / 180 * buffers[id].angle),
-        .dy=(float)sin(M_PI / 180 * buffers[id].angle),
-        .id=(uint16_t)id,
-        .travelled = PROJECTILE_DISTANCE,
-        .castSpell=buffers[id].castSpell
-    };
-    projectiles->array[projectiles->length] = projectile;
-    projectiles->length++;
-    newProjectiles->array[newProjectiles->length] = projectile;
-    newProjectiles->length++;
-}
-void explode_projectile(int i, struct ProjectilePool *projectiles, struct intPool *explodingProjectiles) {
-    explodingProjectiles->array[explodingProjectiles->length] = projectiles->array[i].id;
-    explodingProjectiles->length++;
-    projectiles->array[i] = projectiles->array[projectiles->length - 1];
-    projectiles->length--;
-}
-void detect_collission_projectiles(struct ProjectilePool *projectiles, struct Player players, struct intPool *explodingProjectiles) {
-    for (int i = 0; i < projectiles->length; i++) {
-        explode_projectile(i, projectiles, explodingProjectiles);
-        i--;
+void close_player(struct PlayerPool *players, struct InputBuffer **buffers, int id) {
+    struct InputBuffer *s;
+    HASH_FIND_INT(*buffers, &id, s);
+    if (s) {
+        HASH_DEL(*buffers, s);
+        free(s);
     }
-}
-void close_player(struct PlayerPool *players,int id) { //threadsafe
     for (int i = 0; i < players->length; i++) {
         if (players->array[i].id == id) {
-            atomic_uint_fast16_t indx  = atomic_fetch_sub(&players->length, 1);
-            players->array[i] = players->array[indx+1];
+            atomic_uint_fast16_t indx = atomic_fetch_sub(&players->length, 1);
+            players->array[i] = players->array[indx - 1];
             printf("Player %d closed\n", id);
+            break;
         }
     }
 }
-void input_buffer_player(struct InputBuffer *buffers, struct InputBuffer *buf, int idx) {
-    buffers[idx] = *buf;// todo
+void save_inputbuffer(struct InputBuffer **buffers, struct InputBufferNetwork *net, int id) {
+    struct InputBuffer *s;
+    HASH_FIND_INT(*buffers, &id, s);
+
+    if (s == NULL) {
+        s = malloc(sizeof(struct InputBuffer));
+        s->id = id;
+        HASH_ADD_INT(*buffers, id, s);
+    }
+    s->dir_x = net->dir_x;
+    s->dir_y = net->dir_y;
+    s->angle = net->angle;
+    s->x = net->x;
+    s->y = net->y;
+    s->castSpell = net->castSpell;
+
 }
-void sync_inputbuffer_to_players(struct PlayerPool *players, struct InputBuffer *buffers) {
+
+void update_players_states(struct PlayerPool *players, struct InputBuffer *buffers, struct ProjectilePool *projectiles, struct ProjectilePool *newProjectiles) {
     for (int i = 0; i < players->length; i++) {
-        players->array[i].x += buffers[i].dir_x * SPEED;
-        players->array[i].y += buffers[i].dir_y * SPEED;
-        players->array[i].angle = buffers[i].angle;
-        players->array[i].state |= buffers[i].castSpell;
-        buffers[i].castSpell = 0;
-        buffers[i].dir_x  = 0.0f;
-        buffers[i].dir_y  = 0.0f;
+        struct InputBuffer *buf;
+        HASH_FIND_INT(buffers, &players->array[i].id, buf);
+        if (buf) {
+            compute_airmage_state(&players->array[i], buf, projectiles, newProjectiles);
+        }
     }
 }
 
-void move_projectiles(struct ProjectilePool *projectiles, struct intPool *explodingProjectiles) {
-    for (int i = 0; i < projectiles->length; i++) {
-        if (projectiles->array[i].travelled <= 0) {
-            explode_projectile(i,projectiles, explodingProjectiles);
-            i--;
-        }else {
-            projectiles->array[i].x += projectiles->array[i].dx * PROJECTILE_SPEED;
-            projectiles->array[i].y += projectiles->array[i].dy * PROJECTILE_SPEED;
-            projectiles->array[i].travelled -= TICK_RATE_MS;
-        }
-    }
-}
 void update_player_clients(const ClientContext *clients, const struct PlayerPool *players,const struct ProjectilePool *newProjectiles, const struct intPool *explodingProjectiles ) {
     for (int i = 0; i < MAX_PLAYERS ; i++) {
         if (clients[i].dc_player > 0) {
@@ -103,7 +85,7 @@ void update_player_clients(const ClientContext *clients, const struct PlayerPool
         }
     }
 }
-void game_loop(struct PlayerPool *airmages, struct InputBuffer *buffers,const ClientContext *clients) {
+void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffers,const ClientContext *clients) {
     struct timespec ts;
     uint64_t next_tick;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -119,14 +101,13 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer *buffers,const Cl
         newProjectiles.length = 0;
         explodingProjectiles.length = 0;
 
-        sync_inputbuffer_to_players(airmages, buffers);
+        update_players_states(airmages, *buffers, &projectiles, &newProjectiles);
         move_projectiles(&projectiles, &explodingProjectiles);
         update_player_clients(clients, airmages, &newProjectiles, &explodingProjectiles);
 
         clock_gettime(CLOCK_MONOTONIC, &end_ts);
         uint64_t elapsed_ns = (end_ts.tv_sec - start_ts.tv_sec) * NS_PER_SEC + (end_ts.tv_nsec - start_ts.tv_nsec);
         printf("Loop processing time: %f ms\n", (double)elapsed_ns / NS_PER_MS);
-
         next_tick += (TICK_RATE_MS * NS_PER_MS);
         clock_gettime(CLOCK_MONOTONIC, &ts);
         uint64_t now = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
@@ -143,13 +124,13 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer *buffers,const Cl
 
 int main() {
     struct PlayerPool airmages = {0};
-    struct InputBuffer buffers[MAX_PLAYERS] = {0};
     ClientContext clients[MAX_PLAYERS] = {0};
+    struct InputBuffer *buffers = NULL;
     struct authenticatedPlayer *authenticatedPlayers = NULL;
 
     ServerContext server_ctx = {
         .playerPool = &airmages,
-        .inputBuffers = buffers,
+        .inputBuffers = &buffers,
         .clients = clients,
         .authenticatedPlayers = authenticatedPlayers
     };
@@ -160,7 +141,7 @@ int main() {
     }
 
     printf("Signaling server listening on port %d...\n", PORT);
-    game_loop(&airmages, buffers, clients);
+    game_loop(&airmages, &buffers, clients);
 
     stop_networking_server(server);
     cleanup_networking();
