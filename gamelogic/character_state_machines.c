@@ -1,41 +1,48 @@
 #include "../gameDataStructures.h"
 #include "projectile.h"
+#include "selfCast.h"
+#include "area_of_effect.h"
 
 int applyMovement(struct Player *player, struct InputBuffer *buffer) {
     player->angle = buffer->angle;
-    player->x += buffer->dir_x * SPEED;
-    player->y += buffer->dir_y * SPEED;
-    buffer->dir_x  = 0.0f;
-    buffer->dir_y  = 0.0f;
-    return buffer->dir_x != 0 || buffer->dir_y != 0;
-}
-int castSpell(struct Player *player, struct InputBuffer *buffer, struct ProjectilePool *projectiles, struct ProjectilePool *newProjectiles) {
-    if (buffer->castSpell > 0) {
-        player->animating_ms = HERO_DATA[player->hero].cast_time_ms;
-        shoot_projectile(player->id,buffer,projectiles, newProjectiles);
+    if (buffer->dir_x != 0 || buffer->dir_y != 0) {
+        player->x += buffer->dir_x * SPEED;
+        player->y += buffer->dir_y * SPEED;
+        buffer->dir_x  = 0.0f;
+        buffer->dir_y  = 0.0f;
         return 1;
     }
     return 0;
 }
-
+void setSpell(int animating_ms, struct Player *player, struct InputBuffer *buffer) {
+    player->animating_ms = 400;
+    player->state = buffer->castSpell;
+    buffer->castSpell = 0;
+}
 void compute_airmage_state(struct Player *player, struct InputBuffer *buffer, struct ProjectilePool *projectiles, struct ProjectilePool *newProjectiles) {
     switch (player->state) {
         case IDLE:
+        case WALKING:
+            switch (buffer->castSpell) {
+                case CASTING_1:
+                    shoot_projectile(player->id,buffer,projectiles, newProjectiles);
+                    setSpell(400, player, buffer);
+                    return;
+                case CASTING_2:
+
+                    setSpell(100, player, buffer);
+                    return;
+                case CASTING_3:
+                    blink(300, player);
+                    setSpell(100, player, buffer);
+                    return;
+                case CASTING_ULTI:
+                    return;
+            }
             if (applyMovement(player,buffer)) {
                 player->state = WALKING;
-            }
-            if (castSpell(player, buffer, projectiles,newProjectiles)) {
-                player->state = buffer->castSpell;
-                buffer->castSpell = 0;
-            }
-            break;
-        case WALKING:
-            if (!applyMovement(player,buffer)) {
+            } else {
                 player->state = IDLE;
-            }
-            if (castSpell(player, buffer, projectiles,newProjectiles)) {
-                player->state = buffer->castSpell;
-                buffer->castSpell = 0;
             }
             break;
         case CASTING_1:

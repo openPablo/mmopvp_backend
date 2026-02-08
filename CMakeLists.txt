@@ -19,5 +19,9 @@ add_executable(pvpmmo_backend
         gamelogic/character_state_machines.h
         gamelogic/projectile.c
         gamelogic/projectile.h
+        gamelogic/selfCast.c
+        gamelogic/selfCast.h
+        gamelogic/area_of_effect.c
+        gamelogic/area_of_effect.h
 )
 target_link_libraries(pvpmmo_backend PRIVATE LibDataChannel::LibDataChannel m)

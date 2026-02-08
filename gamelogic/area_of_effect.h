@@ -1,0 +1,8 @@
+//
+// Created by pablo on 2/8/26.
+//
+
+#ifndef PVPMMO_BACKEND_AREA_OF_EFFECT_H
+#define PVPMMO_BACKEND_AREA_OF_EFFECT_H
+
+#endif //PVPMMO_BACKEND_AREA_OF_EFFECT_H

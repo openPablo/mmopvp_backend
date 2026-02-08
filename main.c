@@ -107,7 +107,7 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffers,const C
 
         clock_gettime(CLOCK_MONOTONIC, &end_ts);
         uint64_t elapsed_ns = (end_ts.tv_sec - start_ts.tv_sec) * NS_PER_SEC + (end_ts.tv_nsec - start_ts.tv_nsec);
-        printf("Loop processing time: %f ms\n", (double)elapsed_ns / NS_PER_MS);
+        //printf("Loop processing time: %f ms\n", (double)elapsed_ns / NS_PER_MS);
         next_tick += (TICK_RATE_MS * NS_PER_MS);
         clock_gettime(CLOCK_MONOTONIC, &ts);
         uint64_t now = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;

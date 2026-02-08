@@ -39,11 +39,6 @@ struct HeroStats {
     int base_health;
 };
 
-static const struct HeroStats HERO_DATA[] = {
-    [AIRMAGE]   = { .cast_time_ms = 400, .base_health = 100 },
-    [PRIEST] = { .cast_time_ms = 400, .base_health = 100 },
-    [ROGUE] = { .cast_time_ms = 400, .base_health = 100 }
-};
 #pragma pack(push, 1)
 struct Player {
     float x;
