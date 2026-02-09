@@ -37,7 +37,7 @@ void compute_airmage_state(struct Player *player, struct InputBuffer *buffer, st
                     setSpell(400, player, buffer);
                     return;
                 case CASTING_ULTI:
-                    cast_aoe_circle(2000, 100, player->id, buffer, &newSpells->circles);
+                    cast_aoe_circle(4000, 400, 100, player->id, buffer, &newSpells->circles);
                     setSpell(400, player, buffer);
                     return;
             }

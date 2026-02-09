@@ -1,16 +1,18 @@
 #include "area_of_effect.h"
 
+#include <math.h>
 
-void cast_aoe_circle(int duration_ms, int radius, int id, const struct InputBuffer *buffer, struct AoECirclePool *newCircles) {
-    struct AoECircle cone = {
-        .x=buffer->x,
-        .y=buffer->y,
+
+void cast_aoe_circle(int duration_ms,int distance, int radius, int id, const struct InputBuffer *buffer, struct AoECirclePool *newCircles) {
+    struct AoECircle circle = {
+        .x=buffer->x + (float)distance * cosf(buffer->angle * (M_PI / 180.0f)),
+        .y=buffer->y + (float)distance * sin(buffer->angle * (M_PI / 180.0f)),
         .radius=radius,
         .time_ms = duration_ms,
         .id=(uint16_t)id,
         .castSpell=buffer->castSpell
     };
-    newCircles->array[newCircles->length] = cone;
+    newCircles->array[newCircles->length] = circle;
     newCircles->length++;
 }
 void cast_aoe_cone(int duration_ms, int length, int id, const struct InputBuffer *buffer, struct AoEConePool *newCones) {
