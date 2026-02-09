@@ -102,6 +102,7 @@ struct intPool{
 struct AoECone {
     float x;
     float y;
+    float angle;
     int time_ms;
     uint16_t length;
     uint16_t id;

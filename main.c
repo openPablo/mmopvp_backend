@@ -115,6 +115,7 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffers,const C
     while (1) {
         struct timespec start_ts, end_ts;
         clock_gettime(CLOCK_MONOTONIC, &start_ts);
+
         explodingProjectiles.length = 0;
         newSpells.projectiles.length = 0;
         newSpells.circles.length = 0;
@@ -124,6 +125,8 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffers,const C
         extendSpellPools(&newSpells,&spells);
 
         move_projectiles(&spells.projectiles, &explodingProjectiles);
+        timelapse_cones(&spells.cones);
+        timelapse_circles(&spells.circles);
         update_player_clients(clients, airmages, &explodingProjectiles, &newSpells);
 
         clock_gettime(CLOCK_MONOTONIC, &end_ts);

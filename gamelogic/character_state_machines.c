@@ -29,14 +29,16 @@ void compute_airmage_state(struct Player *player, struct InputBuffer *buffer, st
                     setSpell(400, player, buffer);
                     return;
                 case CASTING_2:
-                    cast_aoe_cone(100, player->id, buffer, &newSpells->cones);
-                    setSpell(100, player, buffer);
+                    cast_aoe_cone(400, 100, player->id, buffer, &newSpells->cones);
+                    setSpell(400, player, buffer);
                     return;
                 case CASTING_3:
                     blink(300, player);
-                    setSpell(100, player, buffer);
+                    setSpell(400, player, buffer);
                     return;
                 case CASTING_ULTI:
+                    cast_aoe_circle(2000, 100, player->id, buffer, &newSpells->circles);
+                    setSpell(400, player, buffer);
                     return;
             }
             if (applyMovement(player,buffer)) {

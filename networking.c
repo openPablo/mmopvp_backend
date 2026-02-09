@@ -104,12 +104,12 @@ void sendNewProjectilesData(const struct ProjectilePool *pool, const ClientConte
 }
 void sendNewConesData(const struct AoEConePool *pool, const ClientContext *ctx) {
     if (pool && pool->length > 0) {
-        rtcSendMessage(ctx->dc_cones, (char*)pool->array, sizeof(struct Projectile) * pool->length);
+        rtcSendMessage(ctx->dc_cones, (char*)pool->array, sizeof(struct AoECone) * pool->length);
     }
 }
 void sendNewCirclesData(const struct AoECirclePool *pool, const ClientContext *ctx) {
     if (pool && pool->length > 0) {
-        rtcSendMessage(ctx->dc_circles, (char*)pool->array, sizeof(struct Projectile) * pool->length);
+        rtcSendMessage(ctx->dc_circles, (char*)pool->array, sizeof(struct AoECircle) * pool->length);
     }
 }
 void sendExplodingProjectilesData(const struct intPool *exploding, const ClientContext *ctx) {
