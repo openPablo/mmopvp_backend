@@ -4,15 +4,10 @@
 #include "area_of_effect.h"
 
 int applyMovement(struct Player *player, struct InputBuffer *buffer) {
-    player->angle = buffer->angle;
-    if (buffer->dir_x != 0 || buffer->dir_y != 0) {
-        player->x += buffer->dir_x * SPEED;
-        player->y += buffer->dir_y * SPEED;
-        buffer->dir_x  = 0.0f;
-        buffer->dir_y  = 0.0f;
-        return 1;
-    }
-    return 0;
+    player->x += buffer->dir_x * SPEED;
+    player->y += buffer->dir_y * SPEED;
+    buffer->dir_x  = 0.0f;
+    buffer->dir_y  = 0.0f;
 }
 void setSpell(int animating_ms, struct Player *player, struct InputBuffer *buffer) {
     player->animating_ms = 400;
@@ -41,7 +36,9 @@ void compute_airmage_state(struct Player *player, struct InputBuffer *buffer, st
                     setSpell(400, player, buffer);
                     return;
             }
-            if (applyMovement(player,buffer)) {
+            player->angle = buffer->angle;
+            if (buffer->dir_x != 0 || buffer->dir_y != 0) {
+                applyMovement(player,buffer);
                 player->state = WALKING;
             } else {
                 player->state = IDLE;
