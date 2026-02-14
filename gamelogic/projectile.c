@@ -1,33 +1,28 @@
 #include "../gameDataStructures.h"
 #include <math.h>
 
-void shoot_projectile(int distance, int id, const struct InputBuffer *buffer, struct ProjectilePool *newProjectiles) {
+void shoot_projectile(int distance, uint16_t id, const struct InputBuffer *buffer, struct ProjectilePool *newProjectiles) {
     struct Projectile projectile = {
         .x=buffer->x,
         .y=buffer->y,
         .dx=(float)cos(M_PI / 180 * buffer->angle),
         .dy=(float)sin(M_PI / 180 * buffer->angle),
-        .id=(uint16_t)id,
+        .id=id,
         .travelled = distance,
         .castSpell=buffer->castSpell
     };
     newProjectiles->array[newProjectiles->length] = projectile;
     newProjectiles->length++;
 }
-void explode_projectile(int i, struct ProjectilePool *projectiles, struct intPool *explodingProjectiles) {
+void explode_projectile(int i, struct ProjectilePool *projectiles, struct shortPool *explodingProjectiles) {
     explodingProjectiles->array[explodingProjectiles->length] = projectiles->array[i].id;
     explodingProjectiles->length++;
     projectiles->array[i] = projectiles->array[projectiles->length - 1];
     projectiles->length--;
+
 }
-//ToDo: implement collission detection
-//void detect_collission_projectiles(struct ProjectilePool *projectiles, struct Player players, struct intPool *explodingProjectiles) {
-//    for (int i = 0; i < projectiles->length; i++) {
-//        explode_projectile(i, projectiles, explodingProjectiles);
-//        i--;
-//    }
-//}
-void move_projectiles(struct ProjectilePool *projectiles, struct intPool *explodingProjectiles) {
+
+void move_projectiles(struct ProjectilePool *projectiles, struct shortPool *explodingProjectiles) {
     for (int i = 0; i < projectiles->length; i++) {
         if (projectiles->array[i].travelled <= 0) {
             explode_projectile(i,projectiles, explodingProjectiles);

@@ -77,7 +77,7 @@ void update_players_states(struct PlayerPool *players, struct InputBuffer *buffe
     }
 }
 
-void update_player_clients(const ClientContext *clients, const struct PlayerPool *players, const struct intPool *explodingProjectiles,struct SpellsContext *newSpells) {
+void update_player_clients(const ClientContext *clients, const struct PlayerPool *players, const struct shortPool *explodingProjectiles,struct SpellsContext *newSpells) {
     for (int i = 0; i < MAX_PLAYERS ; i++) {
         if (clients[i].dc_player > 0) {
             sendPlayerData(players, &clients[i]);
@@ -102,6 +102,9 @@ void extendSpellPools(struct SpellsContext *newSpells, struct SpellsContext *spe
         spells->circles.length++;
     }
 }
+// Create array of gridcells
+// Create method to map x/y position to gridcell
+//
 void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffers,const ClientContext *clients) {
     struct timespec ts;
     uint64_t next_tick;
@@ -111,7 +114,7 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffers,const C
 
     struct SpellsContext spells = {0};
     struct SpellsContext newSpells = {0};
-    struct intPool explodingProjectiles= {0};
+    struct shortPool explodingProjectiles= {0};
     while (1) {
         struct timespec start_ts, end_ts;
         clock_gettime(CLOCK_MONOTONIC, &start_ts);

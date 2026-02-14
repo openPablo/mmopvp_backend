@@ -112,7 +112,7 @@ void sendNewCirclesData(const struct AoECirclePool *pool, const ClientContext *c
         rtcSendMessage(ctx->dc_circles, (char*)pool->array, sizeof(struct AoECircle) * pool->length);
     }
 }
-void sendExplodingProjectilesData(const struct intPool *exploding, const ClientContext *ctx) {
+void sendExplodingProjectilesData(const struct shortPool *exploding, const ClientContext *ctx) {
     if (exploding && exploding->length > 0) {
         rtcSendMessage(ctx->dc_explodingProjectiles, (char*)exploding->array, sizeof(short) * exploding->length);
     }

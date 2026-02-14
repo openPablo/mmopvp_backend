@@ -10,11 +10,10 @@
 #define GAME_MAX_HEIGHT 1080
 
 #define MAX_PLAYERS 1000
-#define SPEED 30.0f;
-
+#define SPEED 30.0f
 #define SPELLS_MAX 4000 //amount of same sort of spells at the same time
 #define PROJECTILES_MAX 4000 //Assuming max 4k projectiles will be in flight and 1k will explode at the same game tick
-#define PROJECTILE_SPEED 40.0f;
+#define PROJECTILE_SPEED 40.0f
 
 #define TICK_RATE_MS 66
 #define NS_PER_MS 1000000
@@ -97,8 +96,8 @@ struct ProjectilePool{
     struct Projectile array[PROJECTILES_MAX];
     short length;
 };
-struct intPool{
-    short array[PROJECTILES_MAX/10];
+struct shortPool{
+    uint16_t array[PROJECTILES_MAX/10];
     short length;
 };
 #pragma pack(push, 1)
