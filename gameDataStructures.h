@@ -132,6 +132,12 @@ struct AoEConePool{
     short length;
 };
 
+typedef struct {
+    void *array;
+    ssize_t size;
+    short length;
+} Pool;
+
 struct SpellsContext {
     struct ProjectilePool projectiles;
     struct AoEConePool cones;

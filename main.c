@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdatomic.h>
+#include <math.h>
 
 #include "networking.h"
 #include "gameDataStructures.h"
@@ -103,49 +104,86 @@ void extendSpellPools(struct SpellsContext *newSpells, struct SpellsContext *spe
     }
 }
 // Create array of gridcells
-// Create method to map x/y position to gridcell
+// Create hash function to map x/y position to gridcell
 //
-void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffers,const ClientContext *clients) {
+
+int hashPositionToGrid(struct Player *player, int width, int height, int boxcount) {
+    return floor(player->x/width) + floor(player->y/height) * boxcount;
+}
+
+
+void create_grid(int max_width_px, int max_height_px, int *grid, int boxcount, struct PlayerPool *players) {
+    struct Player grid_data[players->length];
+    int width = max_width_px / boxcount;
+    int height = max_height_px / boxcount;
+    for (int i = 0; i < players->length; i++) {
+        grid[
+            hashPositionToGrid(
+                &players->array[i],
+                width,
+                height,
+                boxcount)
+            ] += 1;
+    }
+    int sum = 0;
+    for (int i = 0; i<= boxcount * boxcount +1; i++) {
+        sum += grid[i];
+        grid[i] = sum;
+    }
+    for (int i = 0; i < players->length; i++) {//
+        int pointer = hashPositionToGrid(
+                &players->array[i],
+                width,
+                height,
+                boxcount)
+            ;
+        grid_data[grid[pointer]] = players->array[i];
+        grid[pointer] -= 1;
+    }
+}
+uint64_t get_time_ns(void) {
     struct timespec ts;
-    uint64_t next_tick;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    next_tick = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
+    return (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
+}
+
+void sync_frame(uint64_t *next_tick) {
+    *next_tick += (TICK_RATE_MS * NS_PER_MS);
+    uint64_t now = get_time_ns();
+
+    if (now < *next_tick) {
+        struct timespec sleep_ts;
+        sleep_ts.tv_sec = *next_tick - now / NS_PER_SEC;
+        sleep_ts.tv_nsec = *next_tick - now % NS_PER_SEC;
+        nanosleep(&sleep_ts, NULL);
+    }
+}
+
+void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffers, const ClientContext *clients) {
+    uint64_t next_tick = get_time_ns();
     printf("Game loop started at %dms tickrate.\n", TICK_RATE_MS);
 
     struct SpellsContext spells = {0};
     struct SpellsContext newSpells = {0};
-    struct shortPool explodingProjectiles= {0};
+    struct shortPool explodingProjectiles = {0};
+    int boxcount = 10;
+    int grid[101] = {0}; //flattened 2d matrix, 10x10
     while (1) {
-        struct timespec start_ts, end_ts;
-        clock_gettime(CLOCK_MONOTONIC, &start_ts);
-
+        create_grid(GAME_MAX_WIDTH,GAME_MAX_HEIGHT, grid, boxcount, airmages);
         explodingProjectiles.length = 0;
         newSpells.projectiles.length = 0;
         newSpells.circles.length = 0;
         newSpells.cones.length = 0;
 
         update_players_states(airmages, *buffers, &newSpells);
-        extendSpellPools(&newSpells,&spells);
+        extendSpellPools(&newSpells, &spells);
 
         move_projectiles(&spells.projectiles, &explodingProjectiles);
         timelapse_cones(&spells.cones);
         timelapse_circles(&spells.circles);
         update_player_clients(clients, airmages, &explodingProjectiles, &newSpells);
 
-        clock_gettime(CLOCK_MONOTONIC, &end_ts);
-        uint64_t elapsed_ns = (end_ts.tv_sec - start_ts.tv_sec) * NS_PER_SEC + (end_ts.tv_nsec - start_ts.tv_nsec);
-        //printf("Loop processing time: %f ms\n", (double)elapsed_ns / NS_PER_MS);
-        next_tick += (TICK_RATE_MS * NS_PER_MS);
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        uint64_t now = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
-
-        if (now < next_tick) {
-            struct timespec sleep_ts;
-            uint64_t diff = next_tick - now;
-            sleep_ts.tv_sec = diff / NS_PER_SEC;
-            sleep_ts.tv_nsec = diff % NS_PER_SEC;
-            nanosleep(&sleep_ts, NULL);
-        }
+        sync_frame(&next_tick);
     }
 }
 
