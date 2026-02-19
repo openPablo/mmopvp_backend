@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stdatomic.h>
 #include <math.h>
+#include <unistd.h>
 
 #include "networking.h"
 #include "gameDataStructures.h"
@@ -68,10 +69,10 @@ void save_inputbuffer(struct InputBuffer **buffers, struct InputBufferNetwork *n
 
 }
 
-void update_players_states(struct PlayerPool *players, struct InputBuffer *buffers, struct SpellsContext *newSpells) {
+void update_players_states(struct PlayerPool *players, struct InputBuffer *buffersMap, struct SpellsContext *newSpells) {
     for (int i = 0; i < players->length; i++) {
         struct InputBuffer *buf;
-        HASH_FIND_INT(buffers, &players->array[i].id, buf);
+        HASH_FIND_INT(buffersMap, &players->array[i].id, buf);
         if (buf) {
             compute_airmage_state(&players->array[i], buf, newSpells);
         }
@@ -107,15 +108,19 @@ void extendSpellPools(struct SpellsContext *newSpells, struct SpellsContext *spe
 // Create hash function to map x/y position to gridcell
 //
 
-int hashPositionToGrid(struct Player *player, int width, int height, int boxcount) {
+int hashPositionToGrid(const struct Player *player, int width, int height, int boxcount) {
     return floor(player->x/width) + floor(player->y/height) * boxcount;
 }
 
 
-void create_grid(int max_width_px, int max_height_px, int *grid, int boxcount, struct PlayerPool *players) {
+void create_grid(int max_width_px, int max_height_px, int *grid, int boxcount, const struct PlayerPool *players) {
+    if (players->length == 0) return;
+    memset(grid,0,sizeof(int) * (boxcount * boxcount + 1));
+
     struct Player grid_data[players->length];
     int width = max_width_px / boxcount;
     int height = max_height_px / boxcount;
+
     for (int i = 0; i < players->length; i++) {
         grid[
             hashPositionToGrid(
@@ -126,7 +131,7 @@ void create_grid(int max_width_px, int max_height_px, int *grid, int boxcount, s
             ] += 1;
     }
     int sum = 0;
-    for (int i = 0; i<= boxcount * boxcount +1; i++) {
+    for (int i = 0; i < boxcount * boxcount +1; i++) {
         sum += grid[i];
         grid[i] = sum;
     }
@@ -137,45 +142,43 @@ void create_grid(int max_width_px, int max_height_px, int *grid, int boxcount, s
                 height,
                 boxcount)
             ;
+        --grid[pointer];
         grid_data[grid[pointer]] = players->array[i];
-        grid[pointer] -= 1;
-    }
-}
-uint64_t get_time_ns(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
-}
-
-void sync_frame(uint64_t *next_tick) {
-    *next_tick += (TICK_RATE_MS * NS_PER_MS);
-    uint64_t now = get_time_ns();
-
-    if (now < *next_tick) {
-        struct timespec sleep_ts;
-        sleep_ts.tv_sec = *next_tick - now / NS_PER_SEC;
-        sleep_ts.tv_nsec = *next_tick - now % NS_PER_SEC;
-        nanosleep(&sleep_ts, NULL);
     }
 }
 
-void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffers, const ClientContext *clients) {
-    uint64_t next_tick = get_time_ns();
+struct PlayerPool createPlayerPool (short capacity){
+    struct PlayerPool tmp;
+    tmp.length = 0;
+    tmp.array = malloc(sizeof(struct Player) * capacity);
+    return tmp;
+}
+
+void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffersMap, const ClientContext *clients) {
     printf("Game loop started at %dms tickrate.\n", TICK_RATE_MS);
 
     struct SpellsContext spells = {0};
     struct SpellsContext newSpells = {0};
-    struct shortPool explodingProjectiles = {0};
-    int boxcount = 10;
-    int grid[101] = {0}; //flattened 2d matrix, 10x10
+    struct shortPool explodingProjectiles;
+    explodingProjectiles.length = 0;
+    explodingProjectiles.array = malloc(sizeof(short) * PROJECTILES_MAX);
+    int *grid = malloc(sizeof(int) * 101);
+
+    struct timespec ts;
+    uint64_t next_tick = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    struct timespec start_ts, end_ts;
+
     while (1) {
-        create_grid(GAME_MAX_WIDTH,GAME_MAX_HEIGHT, grid, boxcount, airmages);
+        clock_gettime(CLOCK_MONOTONIC, &start_ts);
+
+        create_grid(GAME_MAX_WIDTH,GAME_MAX_HEIGHT, grid, 10, airmages);
         explodingProjectiles.length = 0;
         newSpells.projectiles.length = 0;
         newSpells.circles.length = 0;
         newSpells.cones.length = 0;
 
-        update_players_states(airmages, *buffers, &newSpells);
+        update_players_states(airmages, *buffersMap, &newSpells);
         extendSpellPools(&newSpells, &spells);
 
         move_projectiles(&spells.projectiles, &explodingProjectiles);
@@ -183,21 +186,39 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffers, const 
         timelapse_circles(&spells.circles);
         update_player_clients(clients, airmages, &explodingProjectiles, &newSpells);
 
-        sync_frame(&next_tick);
+
+        clock_gettime(CLOCK_MONOTONIC, &end_ts);
+        uint64_t elapsed_ns = (end_ts.tv_sec - start_ts.tv_sec) * NS_PER_SEC + (end_ts.tv_nsec - start_ts.tv_nsec);
+        printf("Loop processing time: %f ms\n", (double)elapsed_ns / NS_PER_MS);
+
+
+        next_tick += (TICK_RATE_MS * NS_PER_MS);
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        uint64_t now = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
+
+        if (now < next_tick) {
+            struct timespec sleep_ts;
+            uint64_t diff = next_tick - now;
+            sleep_ts.tv_sec = diff / NS_PER_SEC;
+            sleep_ts.tv_nsec = diff % NS_PER_SEC;
+            nanosleep(&sleep_ts, NULL);
+        }
     }
 }
 
 int main() {
-    struct PlayerPool airmages = {0};
-    ClientContext clients[MAX_PLAYERS] = {0};
-    struct InputBuffer *buffers = NULL;
-    struct authenticatedPlayer *authenticatedPlayers = NULL;
+    struct PlayerPool airmages = createPlayerPool(MAX_PLAYERS);
+
+    ClientContext *clients = malloc(sizeof(ClientContext) * MAX_PLAYERS);
+    //init hashmaps to NULL
+    struct InputBuffer *buffersMap = NULL;
+    struct authenticatedPlayer *authenticatedPlayersMap = NULL;
 
     ServerContext server_ctx = {
         .playerPool = &airmages,
-        .inputBuffers = &buffers,
+        .inputBuffersMap = &buffersMap,
         .clients = clients,
-        .authenticatedPlayers = authenticatedPlayers
+        .authenticatedPlayersMap = authenticatedPlayersMap
     };
 
     int server = start_networking_server(8080, &server_ctx);
@@ -206,7 +227,7 @@ int main() {
     }
 
     printf("Signaling server listening on port %d...\n", PORT);
-    game_loop(&airmages, &buffers, clients);
+    game_loop(&airmages, &buffersMap, clients);
 
     stop_networking_server(server);
     cleanup_networking();

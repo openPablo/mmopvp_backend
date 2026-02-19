@@ -1,5 +1,6 @@
 #include "../gameDataStructures.h"
 #include <math.h>
+#include <stdio.h>
 
 void shoot_projectile(int distance, uint16_t id, const struct InputBuffer *buffer, struct ProjectilePool *newProjectiles) {
     struct Projectile projectile = {
@@ -30,7 +31,9 @@ void move_projectiles(struct ProjectilePool *projectiles, struct shortPool *expl
         }else {
             projectiles->array[i].x += projectiles->array[i].dx * PROJECTILE_SPEED;
             projectiles->array[i].y += projectiles->array[i].dy * PROJECTILE_SPEED;
-            projectiles->array[i].travelled -= TICK_RATE_MS;
+            projectiles->array[i].travelled -= PROJECTILE_SPEED;
+            printf("Move %d\n",projectiles->array[i].travelled);
+
         }
     }
 }

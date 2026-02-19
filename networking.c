@@ -61,13 +61,13 @@ static void on_dc_open(int dc, void *ptr) {
     ClientContext *ctx = (ClientContext *)ptr;
     printf("DataChannel open.\n");
     if (!server_ctx) return;
-    struct authenticatedPlayer *player = find_player(ctx->bearer_token,&server_ctx->authenticatedPlayers);
+    struct authenticatedPlayer *player = find_player(ctx->bearer_token,&server_ctx->authenticatedPlayersMap);
     if (!player) {
         int idx = spawn_player(server_ctx->playerPool, AIRMAGE);
         if (idx >= 0) {
             ctx->player_idx = idx;
             server_ctx->clients[idx] = *ctx;
-            add_player(ctx->player_idx,ctx->bearer_token, &server_ctx->authenticatedPlayers);
+            add_player(ctx->player_idx,ctx->bearer_token, &server_ctx->authenticatedPlayersMap);
             printf("Player spawned at index %d\n", idx);
             sendIdConfirmationMessage(ctx);
         } else {
@@ -89,7 +89,7 @@ static void on_dc_message(int ws, const char *message, int size, void *ptr) {
     }
     struct InputBufferNetwork *buf = (struct InputBufferNetwork*)message;
     if (ctx->player_idx >= 0 ) {
-        save_inputbuffer(server_ctx->inputBuffers, buf, ctx->player_idx);
+        save_inputbuffer(server_ctx->inputBuffersMap, buf, ctx->player_idx);
     }
 }
 void sendPlayerData(const struct PlayerPool *players, const ClientContext *ctx) {
@@ -114,6 +114,7 @@ void sendNewCirclesData(const struct AoECirclePool *pool, const ClientContext *c
 }
 void sendExplodingProjectilesData(const struct shortPool *exploding, const ClientContext *ctx) {
     if (exploding && exploding->length > 0) {
+        printf("explode a projectile\n");
         rtcSendMessage(ctx->dc_explodingProjectiles, (char*)exploding->array, sizeof(short) * exploding->length);
     }
 }

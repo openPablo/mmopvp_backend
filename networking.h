@@ -8,9 +8,9 @@
 
 typedef struct {
     struct PlayerPool *playerPool;
-    struct InputBuffer **inputBuffers;
+    struct InputBuffer **inputBuffersMap;
     struct ClientContext *clients;
-    struct authenticatedPlayer *authenticatedPlayers;
+    struct authenticatedPlayer *authenticatedPlayersMap;
 } ServerContext;
 
 struct authenticatedPlayer {

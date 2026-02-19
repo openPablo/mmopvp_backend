@@ -15,7 +15,7 @@
 #define PROJECTILES_MAX 4000 //Assuming max 4k projectiles will be in flight and 1k will explode at the same game tick
 #define PROJECTILE_SPEED 40.0f
 
-#define TICK_RATE_MS 66
+#define TICK_RATE_MS 16
 #define NS_PER_MS 1000000
 #define NS_PER_SEC 1000000000
 
@@ -54,7 +54,7 @@ struct Player {
 };
 #pragma pack(pop)
 struct PlayerPool {
-    struct Player array[MAX_PLAYERS];
+    struct Player *array;
     atomic_uint_fast16_t length;
 };
 #pragma pack(push, 1)
@@ -97,7 +97,7 @@ struct ProjectilePool{
     short length;
 };
 struct shortPool{
-    uint16_t array[PROJECTILES_MAX/10];
+    uint16_t *array;
     short length;
 };
 #pragma pack(push, 1)

@@ -20,7 +20,7 @@ void compute_airmage_state(struct Player *player, struct InputBuffer *buffer, st
         case WALKING:
             switch (buffer->castSpell) {
                 case CASTING_1:
-                    shoot_projectile(400, player->id,buffer, &newSpells->projectiles);
+                    shoot_projectile(4000, player->id,buffer, &newSpells->projectiles);
                     setSpell(400, player, buffer);
                     return;
                 case CASTING_2:
