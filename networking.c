@@ -1,7 +1,9 @@
-#include "networking.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <zlib.h>
+
+#include "networking.h"
 #include "gameDataStructures.h"
 
 static ServerContext *server_ctx = NULL;
@@ -165,7 +167,21 @@ static void on_ws_closed(int ws, void *ptr) {
     }
 }
 
-
+//Not sure if gzip compr will be worth it
+void update_player_clients(const ClientContext *clients, const struct PlayerPool *players, const struct shortPool *explodingProjectiles,struct SpellsContext *newSpells, unsigned char *gzipBuffer) {
+    //uLong sourceLen = sizeof(struct Player) * players->length;
+    //uLong destLen = compressBound(sourceLen);
+    //compress(gzipBuffer, &destLen, (const unsigned char*)players->array, sourceLen);
+    for (int i = 0; i < MAX_PLAYERS ; i++) {
+        if (clients[i].dc_player > 0) {
+            sendPlayerData(players, &clients[i]);
+            sendNewProjectilesData(&newSpells->projectiles, &clients[i]);
+            sendNewConesData(&newSpells->cones, &clients[i]);
+            sendNewCirclesData(&newSpells->circles, &clients[i]);
+            sendExplodingProjectilesData(explodingProjectiles, &clients[i]);
+        }
+    }
+}
 
 static void on_ws_client(int server, int ws, void *ptr) {
     printf("New client connection request...\n");

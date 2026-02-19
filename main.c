@@ -78,18 +78,6 @@ void update_players_states(struct PlayerPool *players, struct InputBuffer *buffe
         }
     }
 }
-
-void update_player_clients(const ClientContext *clients, const struct PlayerPool *players, const struct shortPool *explodingProjectiles,struct SpellsContext *newSpells) {
-    for (int i = 0; i < MAX_PLAYERS ; i++) {
-        if (clients[i].dc_player > 0) {
-            sendPlayerData(players, &clients[i]);
-            sendNewProjectilesData(&newSpells->projectiles, &clients[i]);
-            sendNewConesData(&newSpells->cones, &clients[i]);
-            sendNewCirclesData(&newSpells->circles, &clients[i]);
-            sendExplodingProjectilesData(explodingProjectiles, &clients[i]);
-        }
-    }
-}
 void extendSpellPools(struct SpellsContext *newSpells, struct SpellsContext *spells) {
     for (int i = 0 ; i < newSpells->projectiles.length; i++) {
         spells->projectiles.array[spells->projectiles.length] = newSpells->projectiles.array[i];
@@ -155,6 +143,10 @@ void limit_players_to_map(struct PlayerPool *players, int max_width, int max_hei
         }
     }
 }
+void check_projectile_player_collision(struct ProjectilePool projectiles, struct Player *grid_data) {
+
+}
+
 struct PlayerPool createPlayerPool (short capacity){
     struct PlayerPool tmp;
     tmp.length = 0;
@@ -192,6 +184,7 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffersMap, con
     struct timespec ts, start_ts, end_ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     uint64_t next_tick = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
+    unsigned char *gzipBuffer = malloc(sizeof(struct Player) * MAX_PLAYERS);
 
     while (1) {
         clock_gettime(CLOCK_MONOTONIC, &start_ts);
@@ -200,16 +193,17 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffersMap, con
         newSpells.circles.length = 0;
         newSpells.cones.length = 0;
 
-
         update_players_states(airmages, *buffersMap, &newSpells);
         extendSpellPools(&newSpells, &spells);
         move_projectiles(&spells.projectiles, &explodingProjectiles);
         timelapse_cones(&spells.cones);
         timelapse_circles(&spells.circles);
 
+
         limit_players_to_map(airmages,GAME_MAX_WIDTH,GAME_MAX_HEIGHT);
         create_collision_grid(grid, grid_data, GAME_MAX_WIDTH,GAME_MAX_HEIGHT, 10, airmages);
-        update_player_clients(clients, airmages, &explodingProjectiles, &newSpells);
+        check_projectile_player_collision(spells.projectiles, grid_data);
+        update_player_clients(clients, airmages, &explodingProjectiles, &newSpells, gzipBuffer);
 
         log_performance(&start_ts, &end_ts);
         sleep_until_next_tick(&ts, &next_tick);

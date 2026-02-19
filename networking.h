@@ -38,4 +38,5 @@ void sendNewProjectilesData(const struct ProjectilePool *projectilePool, const C
 void sendExplodingProjectilesData(const struct shortPool *exploding, const ClientContext *ctx);
 void sendNewConesData(const struct AoEConePool *pool, const ClientContext *ctx);
 void sendNewCirclesData(const struct AoECirclePool *pool, const ClientContext *ctx);
+void update_player_clients(const ClientContext *clients, const struct PlayerPool *players, const struct shortPool *explodingProjectiles,struct SpellsContext *newSpells, unsigned char *gzipBuffer);
 #endif // NETWORKING_H

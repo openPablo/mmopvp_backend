@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 project(pvpmmo_backend C CXX)
 
 set(CMAKE_C_STANDARD 11)
-
+find_package(ZLIB REQUIRED)
 include(FetchContent)
 FetchContent_Declare(
         libdatachannel
@@ -24,4 +24,4 @@ add_executable(pvpmmo_backend
         gamelogic/area_of_effect.c
         gamelogic/area_of_effect.h
 )
-target_link_libraries(pvpmmo_backend PRIVATE LibDataChannel::LibDataChannel m)
+target_link_libraries(pvpmmo_backend PRIVATE LibDataChannel::LibDataChannel ZLIB::ZLIB m)
