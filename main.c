@@ -153,7 +153,24 @@ struct PlayerPool createPlayerPool (short capacity){
     tmp.array = malloc(sizeof(struct Player) * capacity);
     return tmp;
 }
+void log_performance(struct timespec *start_ts, struct timespec *end_ts) {
+    clock_gettime(CLOCK_MONOTONIC, end_ts);
+    uint64_t elapsed_ns = (end_ts->tv_sec - start_ts->tv_sec) * NS_PER_SEC + (end_ts->tv_nsec - start_ts->tv_nsec);
+    printf("Loop processing time: %f ms\n", (double)elapsed_ns / NS_PER_MS);
+}
+void sleep_until_next_tick(struct timespec *ts, uint64_t *next_tick) {
+    *next_tick += (TICK_RATE_MS * NS_PER_MS);
+    clock_gettime(CLOCK_MONOTONIC, ts);
+    uint64_t now = (uint64_t)ts->tv_sec * NS_PER_SEC + ts->tv_nsec;
 
+    if (now < *next_tick) {
+        struct timespec sleep_ts;
+        uint64_t diff = *next_tick - now;
+        sleep_ts.tv_sec = diff / NS_PER_SEC;
+        sleep_ts.tv_nsec = diff % NS_PER_SEC;
+        nanosleep(&sleep_ts, NULL);
+    }
+}
 void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffersMap, const ClientContext *clients) {
     printf("Game loop started at %dms tickrate.\n", TICK_RATE_MS);
 
@@ -164,10 +181,9 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffersMap, con
     explodingProjectiles.array = malloc(sizeof(short) * PROJECTILES_MAX);
     int *grid = malloc(sizeof(int) * 101);
 
-    struct timespec ts;
-    uint64_t next_tick = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
+    struct timespec ts, start_ts, end_ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    struct timespec start_ts, end_ts;
+    uint64_t next_tick = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
 
     while (1) {
         clock_gettime(CLOCK_MONOTONIC, &start_ts);
@@ -184,25 +200,11 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffersMap, con
         move_projectiles(&spells.projectiles, &explodingProjectiles);
         timelapse_cones(&spells.cones);
         timelapse_circles(&spells.circles);
+
         update_player_clients(clients, airmages, &explodingProjectiles, &newSpells);
+        log_performance(&start_ts, &end_ts);
 
-
-        clock_gettime(CLOCK_MONOTONIC, &end_ts);
-        uint64_t elapsed_ns = (end_ts.tv_sec - start_ts.tv_sec) * NS_PER_SEC + (end_ts.tv_nsec - start_ts.tv_nsec);
-        printf("Loop processing time: %f ms\n", (double)elapsed_ns / NS_PER_MS);
-
-
-        next_tick += (TICK_RATE_MS * NS_PER_MS);
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        uint64_t now = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
-
-        if (now < next_tick) {
-            struct timespec sleep_ts;
-            uint64_t diff = next_tick - now;
-            sleep_ts.tv_sec = diff / NS_PER_SEC;
-            sleep_ts.tv_nsec = diff % NS_PER_SEC;
-            nanosleep(&sleep_ts, NULL);
-        }
+        sleep_until_next_tick(&ts, &next_tick);
     }
 }
 
