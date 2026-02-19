@@ -104,20 +104,15 @@ void extendSpellPools(struct SpellsContext *newSpells, struct SpellsContext *spe
         spells->circles.length++;
     }
 }
-// Create array of gridcells
-// Create hash function to map x/y position to gridcell
-//
 
 int hashPositionToGrid(const struct Player *player, int width, int height, int boxcount) {
     return floor(player->x/width) + floor(player->y/height) * boxcount;
 }
 
-
-void create_grid(int max_width_px, int max_height_px, int *grid, int boxcount, const struct PlayerPool *players) {
+void create_collision_grid(int *grid, struct Player *grid_data, int max_width_px, int max_height_px, int boxcount, const struct PlayerPool *players) {
     if (players->length == 0) return;
     memset(grid,0,sizeof(int) * (boxcount * boxcount + 1));
 
-    struct Player grid_data[players->length];
     int width = max_width_px / boxcount;
     int height = max_height_px / boxcount;
 
@@ -146,7 +141,20 @@ void create_grid(int max_width_px, int max_height_px, int *grid, int boxcount, c
         grid_data[grid[pointer]] = players->array[i];
     }
 }
-
+void limit_players_to_map(struct PlayerPool *players, int max_width, int max_height) {
+    for (int i = 0; i < players->length; i++) {
+        if (players->array[i].x > max_width-100.0f)
+            players->array[i].x = max_width-100.0f;
+        else if (players->array[i].x < 20.0f) {
+            players->array[i].x = 20.0f;
+        }
+        if (players->array[i].y > max_height-50.0f)
+            players->array[i].y = max_height-50.0f;
+        else if (players->array[i].y < 20.0f) {
+            players->array[i].y = 20.0f;
+        }
+    }
+}
 struct PlayerPool createPlayerPool (short capacity){
     struct PlayerPool tmp;
     tmp.length = 0;
@@ -180,30 +188,30 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffersMap, con
     explodingProjectiles.length = 0;
     explodingProjectiles.array = malloc(sizeof(short) * PROJECTILES_MAX);
     int *grid = malloc(sizeof(int) * 101);
-
+    struct Player *grid_data = malloc(sizeof(struct Player) * MAX_PLAYERS);
     struct timespec ts, start_ts, end_ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     uint64_t next_tick = (uint64_t)ts.tv_sec * NS_PER_SEC + ts.tv_nsec;
 
     while (1) {
         clock_gettime(CLOCK_MONOTONIC, &start_ts);
-
-        create_grid(GAME_MAX_WIDTH,GAME_MAX_HEIGHT, grid, 10, airmages);
         explodingProjectiles.length = 0;
         newSpells.projectiles.length = 0;
         newSpells.circles.length = 0;
         newSpells.cones.length = 0;
 
+
         update_players_states(airmages, *buffersMap, &newSpells);
         extendSpellPools(&newSpells, &spells);
-
         move_projectiles(&spells.projectiles, &explodingProjectiles);
         timelapse_cones(&spells.cones);
         timelapse_circles(&spells.circles);
 
+        limit_players_to_map(airmages,GAME_MAX_WIDTH,GAME_MAX_HEIGHT);
+        create_collision_grid(grid, grid_data, GAME_MAX_WIDTH,GAME_MAX_HEIGHT, 10, airmages);
         update_player_clients(clients, airmages, &explodingProjectiles, &newSpells);
-        log_performance(&start_ts, &end_ts);
 
+        log_performance(&start_ts, &end_ts);
         sleep_until_next_tick(&ts, &next_tick);
     }
 }
