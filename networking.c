@@ -94,9 +94,9 @@ static void on_dc_message(int ws, const char *message, int size, void *ptr) {
         save_inputbuffer(server_ctx->inputBuffersMap, buf, ctx->player_idx);
     }
 }
-void sendPlayerData(const struct PlayerPool *players, const ClientContext *ctx) {
-    if (players && players->length > 0) {
-        rtcSendMessage(ctx->dc_player, (char*)players->array, sizeof(struct Player) * players->length);
+void sendPlayerData(const char *gzipped_players, int size, const ClientContext *ctx) {
+    if (size > 0) {
+        rtcSendMessage(ctx->dc_player, gzipped_players, size);
     }
 }
 void sendNewProjectilesData(const struct ProjectilePool *pool, const ClientContext *ctx) {
@@ -169,12 +169,12 @@ static void on_ws_closed(int ws, void *ptr) {
 
 //Not sure if gzip compr will be worth it
 void update_player_clients(const ClientContext *clients, const struct PlayerPool *players, const struct shortPool *explodingProjectiles,struct SpellsContext *newSpells, unsigned char *gzipBuffer) {
-    //uLong sourceLen = sizeof(struct Player) * players->length;
-    //uLong destLen = compressBound(sourceLen);
-    //compress(gzipBuffer, &destLen, (const unsigned char*)players->array, sourceLen);
+    uLong sourceLen = sizeof(struct Player) * players->length;
+    uLong destLen = compressBound(sourceLen);
+    compress(gzipBuffer, &destLen, (const unsigned char*)players->array, sourceLen);
     for (int i = 0; i < MAX_PLAYERS ; i++) {
         if (clients[i].dc_player > 0) {
-            sendPlayerData(players, &clients[i]);
+            sendPlayerData((char *)gzipBuffer, (int)destLen, &clients[i]);
             sendNewProjectilesData(&newSpells->projectiles, &clients[i]);
             sendNewConesData(&newSpells->cones, &clients[i]);
             sendNewCirclesData(&newSpells->circles, &clients[i]);
@@ -214,7 +214,7 @@ int start_networking_server(int port, ServerContext *ctx) {
 }
 
 
-void stop_networking_server(int server) {
+void stop_networking_server(const int server) {
     rtcDeleteWebSocketServer(server);
 }
 

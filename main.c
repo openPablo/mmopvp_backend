@@ -143,7 +143,7 @@ void limit_players_to_map(struct PlayerPool *players, int max_width, int max_hei
         }
     }
 }
-void check_projectile_player_collision(struct ProjectilePool projectiles, struct Player *grid_data) {
+void check_projectile_player_collision(struct ProjectilePool projectiles, struct Player *grid_data, int length) {
 
 }
 
@@ -202,7 +202,7 @@ void game_loop(struct PlayerPool *airmages, struct InputBuffer **buffersMap, con
 
         limit_players_to_map(airmages,GAME_MAX_WIDTH,GAME_MAX_HEIGHT);
         create_collision_grid(grid, grid_data, GAME_MAX_WIDTH,GAME_MAX_HEIGHT, 10, airmages);
-        check_projectile_player_collision(spells.projectiles, grid_data);
+        //check_projectile_player_collision(spells.projectiles, grid_data, airmages->length);
         update_player_clients(clients, airmages, &explodingProjectiles, &newSpells, gzipBuffer);
 
         log_performance(&start_ts, &end_ts);
